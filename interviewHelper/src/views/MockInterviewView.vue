@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { categories, interviewQuestions } from '@/data/interviewData'
 import { ElMessage } from 'element-plus'
 import { evaluateAnswer } from '@/utils/AnswerEvaluator'
+import { addPoints } from '@/utils/PointsManager'
 
 const router = useRouter()
 
@@ -174,10 +175,8 @@ const submitAnswer = () => {
     interviewState.answers[currentQuestion.value.id] = currentAnswer.value
 
     // 评估答案
-    if (currentQuestion.value.answer) {
-        const evaluation = evaluateAnswer(currentAnswer.value, currentQuestion.value.answer)
-        interviewState.evaluations[currentQuestion.value.id] = evaluation
-    }
+    const evaluation = evaluateAnswer(currentQuestion.value.answer, currentAnswer.value)
+    interviewState.evaluations[currentQuestion.value.id] = evaluation
 
     // 如果是语音输入，停止监听
     if (interviewState.inputMethod === 'voice' && isListening.value) {
@@ -186,6 +185,10 @@ const submitAnswer = () => {
 
     // 显示当前题目的评分结果
     interviewState.showingResult = true
+
+    // 奖励10积分
+    addPoints(10)
+    ElMessage.success('回答完成，获得10积分！')
 }
 
 // 继续下一题
@@ -411,9 +414,9 @@ onBeforeUnmount(() => {
                             <h4>您的答案评分</h4>
                             <div class="score-display">
                                 <span class="score-value">{{ interviewState.evaluations[currentQuestion.id].score
-                                    }}</span>
+                                }}</span>
                                 <span class="score-grade">({{ interviewState.evaluations[currentQuestion.id].grade
-                                    }})</span>
+                                }})</span>
                             </div>
                         </div>
 
@@ -489,7 +492,7 @@ onBeforeUnmount(() => {
                                 <span v-if="interviewState.evaluations[question.id]" class="question-score">
                                     得分: {{ interviewState.evaluations[question.id].score }}
                                     <span class="question-grade">({{ interviewState.evaluations[question.id].grade
-                                        }})</span>
+                                    }})</span>
                                 </span>
                             </div>
                             <div class="question-content">{{ question.question }}</div>

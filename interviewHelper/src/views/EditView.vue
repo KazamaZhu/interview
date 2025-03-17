@@ -3,6 +3,7 @@ import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { categories, interviewQuestions } from '@/data/interviewData'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { addPoints } from '@/utils/PointsManager'
 
 const router = useRouter()
 const route = useRoute()
@@ -99,9 +100,12 @@ const addQuestion = () => {
   // 生成一个新的ID
   const newId = `${selectedCategory.value}-${Date.now()}`
 
+  // 添加积分奖励
+  addPoints(20)
+
   ElMessage({
     type: 'success',
-    message: '问题添加成功！在实际应用中，这将保存到数据库。'
+    message: '问题添加成功！获得20积分奖励。在实际应用中，这将保存到数据库。'
   })
 
   // 添加成功后返回首页
@@ -113,9 +117,12 @@ const updateQuestion = () => {
   // 在实际应用中，这里会调用API更新数据
   // 由于这是静态应用，我们只显示一个成功消息
 
+  // 添加积分奖励
+  addPoints(20)
+
   ElMessage({
     type: 'success',
-    message: '问题更新成功！在实际应用中，这将更新到数据库。'
+    message: '问题更新成功！获得20积分奖励。在实际应用中，这将更新到数据库。'
   })
 
   // 更新成功后返回首页
