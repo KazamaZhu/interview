@@ -83,7 +83,8 @@ const selectRandomQuestion = () => {
     const randomQuestion = categoryQuestions[Math.floor(Math.random() * categoryQuestions.length)]
 
     // 获取分类名称
-    const categoryName = categories.find(c => c.id === randomCategoryId)?.name || randomCategoryId
+    const categoryObj = categories.find(c => c.id === randomCategoryId)
+    const categoryName = categoryObj ? categoryObj.name : randomCategoryId
 
     // 设置当前问题
     currentQuestion.id = randomQuestion.id

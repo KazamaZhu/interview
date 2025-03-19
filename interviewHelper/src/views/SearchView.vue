@@ -86,7 +86,8 @@ const performSearch = () => {
         return
       }
 
-      const categoryName = categories.find(c => c.id === categoryId)?.name || categoryId
+      const categoryObj = categories.find(c => c.id === categoryId)
+      const categoryName = categoryObj ? categoryObj.name : categoryId
 
       // 累计问题总数
       totalQuestions += questions.length
@@ -246,8 +247,9 @@ const editCurrentResult = () => {
         <p>搜索词: {{ keyword }}</p>
         <p>路由参数: {{ JSON.stringify(route.query) }}</p>
         <p>分类总数: {{ Object.keys(interviewQuestions).length }}</p>
-        <p>Redis分类问题数: {{ interviewQuestions['redis']?.length || '未找到Redis分类' }}</p>
-        <p>Redis第一个问题: {{ interviewQuestions['redis']?.[0]?.question || '无' }}</p>
+        <p>Redis分类问题数: {{ interviewQuestions['redis'] ? interviewQuestions['redis'].length : '未找到Redis分类' }}</p>
+        <p>Redis第一个问题: {{ interviewQuestions['redis'] && interviewQuestions['redis'][0] ?
+          interviewQuestions['redis'][0].question : '无' }}</p>
       </div>
     </div>
 
