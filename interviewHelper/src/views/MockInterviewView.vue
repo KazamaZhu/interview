@@ -2,7 +2,7 @@
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { categories, interviewQuestions } from '@/data/interviewData'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { evaluateAnswer } from '@/utils/AnswerEvaluator'
 import { addPoints } from '@/utils/PointsManager'
 
@@ -27,6 +27,14 @@ const recognition = ref(null)
 const isListening = ref(false)
 const transcript = ref('')
 
+// 音频设备检测状态
+const audioDeviceState = reactive({
+    isChecking: false,
+    isDeviceConnected: false,
+    errorMessage: '',
+    showDeviceCheckDialog: false
+})
+
 // 当前问题
 const currentQuestion = computed(() => {
     if (interviewState.questions.length === 0 ||
@@ -38,6 +46,50 @@ const currentQuestion = computed(() => {
 
 // 当前答案
 const currentAnswer = ref('')
+
+// 检测音频输入设备
+const checkAudioDevice = () => {
+    audioDeviceState.isChecking = true
+    audioDeviceState.errorMessage = ''
+
+    // 检查浏览器是否支持 getUserMedia
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        audioDeviceState.isChecking = false
+        audioDeviceState.isDeviceConnected = false
+        audioDeviceState.errorMessage = '您的浏览器不支持音频输入设备检测，请确保已连接麦克风或耳机。'
+        return Promise.reject(new Error('浏览器不支持设备检测'))
+    }
+
+    return navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+            // 成功获取到音频流，表示有设备连接
+            audioDeviceState.isDeviceConnected = true
+
+            // 停止所有音频轨道，释放资源
+            stream.getTracks().forEach(track => track.stop())
+
+            audioDeviceState.isChecking = false
+            return true
+        })
+        .catch(error => {
+            console.error('音频设备检测失败:', error)
+            audioDeviceState.isDeviceConnected = false
+
+            // 根据错误类型设置友好的错误信息
+            if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+                audioDeviceState.errorMessage = '未检测到麦克风或耳机设备，请确保设备已连接并重试。'
+            } else if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                audioDeviceState.errorMessage = '需要麦克风权限才能使用语音输入功能，请允许访问麦克风。'
+            } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+                audioDeviceState.errorMessage = '麦克风或耳机设备被占用或无法使用，请关闭其他使用此设备的应用后重试。'
+            } else {
+                audioDeviceState.errorMessage = '无法访问麦克风或耳机设备，请检查设备连接并重试。'
+            }
+
+            audioDeviceState.isChecking = false
+            return Promise.reject(error)
+        })
+}
 
 // 初始化语音识别（如果浏览器支持）
 const initSpeechRecognition = () => {
@@ -73,10 +125,51 @@ const initSpeechRecognition = () => {
         recognition.value.onerror = (event) => {
             console.error('语音识别错误:', event.error)
             isListening.value = false
-            ElMessage.error('语音识别出错，请重试或切换到文本输入')
+
+            // 如果是设备错误，显示相应提示
+            if (event.error === 'no-speech' || event.error === 'audio-capture' || event.error === 'not-allowed') {
+                audioDeviceState.isDeviceConnected = false
+
+                if (event.error === 'audio-capture') {
+                    audioDeviceState.errorMessage = '未检测到麦克风设备，请插入耳机或连接麦克风后重试。'
+                } else if (event.error === 'not-allowed') {
+                    audioDeviceState.errorMessage = '麦克风访问被拒绝，请允许浏览器使用麦克风。'
+                } else {
+                    audioDeviceState.errorMessage = '没有检测到语音输入，请确保麦克风正常工作。'
+                }
+
+                ElMessage.error(audioDeviceState.errorMessage)
+                showDeviceCheckDialog()
+            } else {
+                ElMessage.error('语音识别出错，请重试或切换到文本输入')
+            }
         }
     } else {
         ElMessage.warning('您的浏览器不支持语音识别，请使用文本输入')
+        interviewState.inputMethod = 'text'
+    }
+}
+
+// 显示设备检查对话框
+const showDeviceCheckDialog = () => {
+    if (!audioDeviceState.isDeviceConnected) {
+        audioDeviceState.showDeviceCheckDialog = true
+    }
+}
+
+// 处理设备检查结果
+const handleDeviceCheckResult = (continueWithVoice = false) => {
+    audioDeviceState.showDeviceCheckDialog = false
+
+    if (continueWithVoice && audioDeviceState.isDeviceConnected) {
+        // 用户确认使用语音输入，并且设备已连接
+        interviewState.inputMethod = 'voice'
+
+        if (interviewState.started) {
+            startListening()
+        }
+    } else if (!continueWithVoice) {
+        // 用户选择切换到文本输入
         interviewState.inputMethod = 'text'
     }
 }
@@ -88,9 +181,18 @@ const startListening = () => {
     }
 
     if (recognition.value) {
-        transcript.value = ''
-        recognition.value.start()
-        isListening.value = true
+        // 先检查设备连接状态
+        checkAudioDevice()
+            .then(() => {
+                transcript.value = ''
+                recognition.value.start()
+                isListening.value = true
+                ElMessage.success('语音识别已开始')
+            })
+            .catch(error => {
+                console.error('开始录音前设备检查失败:', error)
+                showDeviceCheckDialog()
+            })
     }
 }
 
@@ -105,8 +207,21 @@ const stopListening = () => {
 // 切换输入方式
 const toggleInputMethod = () => {
     if (interviewState.inputMethod === 'text') {
-        interviewState.inputMethod = 'voice'
-        ElMessage.success('已切换到语音输入模式')
+        // 从文本切换到语音，先检查设备
+        checkAudioDevice()
+            .then(() => {
+                interviewState.inputMethod = 'voice'
+                ElMessage.success('已切换到语音输入模式')
+
+                // 如果面试已开始，立即开始录音
+                if (interviewState.started && !isListening.value) {
+                    startListening()
+                }
+            })
+            .catch(error => {
+                console.error('切换到语音输入前设备检查失败:', error)
+                showDeviceCheckDialog()
+            })
     } else {
         stopListening()
         interviewState.inputMethod = 'text'
@@ -147,6 +262,23 @@ const generateRandomQuestions = () => {
 
 // 开始模拟面试
 const startInterview = () => {
+    // 如果选择了语音输入，先检查设备
+    if (interviewState.inputMethod === 'voice') {
+        checkAudioDevice()
+            .then(() => {
+                startInterviewCore()
+            })
+            .catch(error => {
+                console.error('开始面试前设备检查失败:', error)
+                showDeviceCheckDialog()
+            })
+    } else {
+        startInterviewCore()
+    }
+}
+
+// 核心开始面试功能
+const startInterviewCore = () => {
     interviewState.questions = generateRandomQuestions()
     interviewState.started = true
     interviewState.finished = false
@@ -290,9 +422,17 @@ const getProgressStatus = (score) => {
 
 // 组件挂载时
 onMounted(() => {
-    // 初始化语音识别
+    // 如果默认选择语音输入，先进行音频设备检测
     if (interviewState.inputMethod === 'voice') {
-        initSpeechRecognition()
+        checkAudioDevice()
+            .then(() => {
+                initSpeechRecognition()
+            })
+            .catch(error => {
+                console.error('初始化时设备检查失败:', error)
+                // 默认切换到文本输入
+                interviewState.inputMethod = 'text'
+            })
     }
 })
 
@@ -330,8 +470,34 @@ onBeforeUnmount(() => {
                     <h3>选择答题方式</h3>
                     <el-radio-group v-model="interviewState.inputMethod" class="input-method-selector">
                         <el-radio label="text">文本输入</el-radio>
-                        <el-radio label="voice">语音输入</el-radio>
+                        <el-radio label="voice">语音输入
+                            <el-tooltip content="语音输入需要麦克风或耳机支持" placement="top">
+                                <el-icon class="info-icon">
+                                    <InfoFilled />
+                                </el-icon>
+                            </el-tooltip>
+                        </el-radio>
                     </el-radio-group>
+
+                    <div v-if="interviewState.inputMethod === 'voice'" class="device-check-info">
+                        <el-button @click="checkAudioDevice" size="small" type="info"
+                            :disabled="audioDeviceState.isChecking">
+                            <el-icon>
+                                <Microphone />
+                            </el-icon>
+                            检测麦克风设备
+                        </el-button>
+                        <div v-if="audioDeviceState.isDeviceConnected" class="device-status success">
+                            <el-icon>
+                                <CircleCheckFilled />
+                            </el-icon> 麦克风设备已连接
+                        </div>
+                        <div v-else-if="audioDeviceState.errorMessage" class="device-status error">
+                            <el-icon>
+                                <CircleCloseFilled />
+                            </el-icon> {{ audioDeviceState.errorMessage }}
+                        </div>
+                    </div>
                 </div>
 
                 <el-button type="primary" size="large" @click="startInterview" class="start-button">
@@ -414,9 +580,9 @@ onBeforeUnmount(() => {
                             <h4>您的答案评分</h4>
                             <div class="score-display">
                                 <span class="score-value">{{ interviewState.evaluations[currentQuestion.id].score
-                                }}</span>
+                                    }}</span>
                                 <span class="score-grade">({{ interviewState.evaluations[currentQuestion.id].grade
-                                }})</span>
+                                    }})</span>
                             </div>
                         </div>
 
@@ -492,7 +658,7 @@ onBeforeUnmount(() => {
                                 <span v-if="interviewState.evaluations[question.id]" class="question-score">
                                     得分: {{ interviewState.evaluations[question.id].score }}
                                     <span class="question-grade">({{ interviewState.evaluations[question.id].grade
-                                    }})</span>
+                                        }})</span>
                                 </span>
                             </div>
                             <div class="question-content">{{ question.question }}</div>
@@ -542,6 +708,53 @@ onBeforeUnmount(() => {
                 </div>
             </div>
         </div>
+
+        <!-- 音频设备检查对话框 -->
+        <el-dialog v-model="audioDeviceState.showDeviceCheckDialog" title="音频设备检查" width="400px">
+            <div class="audio-check-dialog">
+                <div v-if="audioDeviceState.isChecking" class="checking-status">
+                    <el-icon>
+                        <Loading />
+                    </el-icon>
+                    正在检测麦克风或耳机设备...
+                </div>
+                <div v-else-if="!audioDeviceState.isDeviceConnected" class="error-status">
+                    <el-icon>
+                        <WarningFilled />
+                    </el-icon>
+                    <div class="error-message">{{ audioDeviceState.errorMessage || '未检测到麦克风设备' }}</div>
+                    <div class="device-tips">
+                        <p>提示：</p>
+                        <ul>
+                            <li>确保您的耳机或麦克风已正确连接到电脑</li>
+                            <li>检查设备是否被其他应用程序占用</li>
+                            <li>在浏览器设置中允许麦克风访问权限</li>
+                            <li>重新连接设备后点击"重新检测"按钮</li>
+                        </ul>
+                    </div>
+                </div>
+                <div v-else class="success-status">
+                    <el-icon>
+                        <CircleCheckFilled />
+                    </el-icon>
+                    麦克风设备已连接，可以开始语音输入了！
+                </div>
+            </div>
+            <template #footer>
+                <div class="dialog-footer">
+                    <el-button @click="checkAudioDevice" :loading="audioDeviceState.isChecking">
+                        重新检测
+                    </el-button>
+                    <el-button @click="handleDeviceCheckResult(false)" type="info">
+                        切换到文本输入
+                    </el-button>
+                    <el-button @click="handleDeviceCheckResult(true)" type="primary"
+                        :disabled="!audioDeviceState.isDeviceConnected">
+                        继续使用语音输入
+                    </el-button>
+                </div>
+            </template>
+        </el-dialog>
     </div>
 </template>
 
@@ -922,6 +1135,102 @@ onBeforeUnmount(() => {
     margin-top: 20px;
     display: flex;
     justify-content: flex-end;
+}
+
+.device-check-info {
+    margin-top: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.device-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 15px;
+    border-radius: 4px;
+}
+
+.device-status.success {
+    color: #67C23A;
+    background-color: #f0f9eb;
+}
+
+.device-status.error {
+    color: #F56C6C;
+    background-color: #fef0f0;
+}
+
+.info-icon {
+    color: #909399;
+    margin-left: 5px;
+    cursor: help;
+}
+
+.audio-check-dialog {
+    padding: 10px;
+    min-height: 150px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.checking-status,
+.error-status,
+.success-status {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    text-align: center;
+}
+
+.error-status {
+    color: #F56C6C;
+}
+
+.error-message {
+    font-size: 1.1rem;
+    margin-bottom: 10px;
+}
+
+.success-status {
+    color: #67C23A;
+    font-size: 1.1rem;
+}
+
+.device-tips {
+    background-color: #f5f7fa;
+    padding: 15px;
+    border-radius: 4px;
+    width: 100%;
+    text-align: left;
+    margin-top: 5px;
+}
+
+.device-tips p {
+    font-weight: bold;
+    margin-bottom: 8px;
+    color: #303133;
+}
+
+.device-tips ul {
+    padding-left: 20px;
+    margin: 0;
+}
+
+.device-tips li {
+    margin-bottom: 8px;
+    color: #606266;
+    font-size: 0.9rem;
+}
+
+.dialog-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
 }
 
 @media (max-width: 768px) {

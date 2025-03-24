@@ -1,45 +1,99 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, computed, nextTick } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getPoints } from '@/utils/PointsManager'
 import SignInCard from '@/components/SignInCard.vue'
 import SlotMachine from '@/components/SlotMachine.vue'
 import PointsCard from '@/components/PointsCard.vue'
-import { categories } from '@/data/interviewData'
+import { categories, interviewQuestions } from '@/data/interviewData'
 import PointsInput from '@/components/PointsInput.vue'
+import DataManagerUI from '@/components/DataManagerUI.vue'
+import { getCurrentData } from '@/utils/DataManager'
 
 const router = useRouter()
+const route = useRoute()
 const searchKeyword = ref('')
 const pointsRefreshTrigger = ref(0)
+const isSearching = ref(false)
 
 // 对话框显示状态
 const signInDialogVisible = ref(false)
 const slotMachineDialogVisible = ref(false)
 const pointsDialogVisible = ref(false)
 const showPointsInputDialog = ref(false)
+const dataManagerDialogVisible = ref(false)
 
 // 当前积分
 const currentPoints = ref(0)
 
+// 从localStorage获取最新的数据
+const latestData = ref(null)
+
+// 安全地获取分类列表
+const safeCategories = computed(() => {
+  if (latestData.value && Array.isArray(latestData.value.categories)) {
+    return latestData.value.categories
+  }
+  return categories || []
+})
+
+// 获取每个分类下的问题数量
+const getQuestionCount = (category) => {
+  // 优先使用本地最新数据
+  if (latestData.value && latestData.value.interviewQuestions && latestData.value.interviewQuestions[category]) {
+    return latestData.value.interviewQuestions[category].length || 0
+  }
+  // 否则使用导入的数据
+  return interviewQuestions[category]?.length || 0
+}
+
+// 加载最新数据
+const loadLatestData = () => {
+  try {
+    const data = getCurrentData()
+    if (data) {
+      latestData.value = data
+    } else {
+      console.warn('getCurrentData返回空数据')
+      latestData.value = { categories: [...categories], interviewQuestions: { ...interviewQuestions } }
+    }
+  } catch (error) {
+    console.error('加载最新数据失败:', error)
+    // 失败时使用默认数据
+    latestData.value = { categories: [...categories], interviewQuestions: { ...interviewQuestions } }
+  }
+}
+
 // 处理搜索
 const handleSearch = () => {
-  if (!searchKeyword.value || !searchKeyword.value.trim()) {
+  // 记录日志
+  console.log('首页搜索关键词:', searchKeyword.value)
+
+  // 检查关键词是否为空
+  if (!searchKeyword.value.trim()) {
     ElMessage.warning('请输入搜索关键词')
     return
   }
 
-  console.log('首页搜索关键词:', searchKeyword.value)
+  isSearching.value = true
 
-  // 使用简单的路径跳转，避免命名路由可能的问题
-  router.push({
-    path: '/search',
-    query: { keyword: searchKeyword.value.trim() }
-  }).catch(err => {
-    console.error('导航失败:', err)
-    // 如果路由导航失败，尝试直接刷新页面
-    window.location.href = `/search?keyword=${encodeURIComponent(searchKeyword.value.trim())}`
-  })
+  // 使用路由导航到搜索页面
+  try {
+    router.push(`/search?keyword=${encodeURIComponent(searchKeyword.value.trim())}`)
+      .catch(err => {
+        console.error('导航错误:', err)
+        // 如果路由导航失败，尝试刷新页面导航
+        window.location.href = `/#/search?keyword=${encodeURIComponent(searchKeyword.value.trim())}`
+      })
+      .finally(() => {
+        isSearching.value = false
+      })
+  } catch (error) {
+    console.error('搜索处理错误:', error)
+    isSearching.value = false
+    ElMessage.error('搜索过程中发生错误')
+  }
 }
 
 // 处理分类点击
@@ -86,18 +140,107 @@ const showPointsInputDialogFunc = () => {
   showPointsInputDialog.value = true
 }
 
-// 组件挂载时获取积分
+// 显示数据管理对话框
+const showDataManagerDialog = () => {
+  dataManagerDialogVisible.value = true
+}
+
+// 组件挂载时获取积分和最新数据
 onMounted(() => {
+  // 确保数据加载
   refreshPoints()
+
+  // 确保latestData有默认值，防止模板渲染错误
+  if (!latestData.value) {
+    latestData.value = { categories: [...categories], interviewQuestions: { ...interviewQuestions } }
+  }
+
+  // 然后尝试加载最新数据
+  loadLatestData()
+
+  // 增加一个额外的安全检查，确保数据已加载
+  setTimeout(() => {
+    console.log('执行延迟数据加载检查')
+    if (!latestData.value || !latestData.value.categories) {
+      console.warn('延迟加载数据')
+      latestData.value = { categories: [...categories], interviewQuestions: { ...interviewQuestions } }
+      loadLatestData()
+    }
+  }, 300)
+
+  // 检查URL中是否有错误信息
+  if (route.query.error === 'category_not_found' && route.query.category) {
+    ElMessage.error({
+      message: `分类 "${route.query.category}" 不存在或已被删除，请检查分类名称。`,
+      duration: 0,  // 不自动关闭
+      showClose: true
+    })
+  }
 })
+
+// 创建一个强制刷新方法，可以在需要时调用
+const forceRefresh = () => {
+  console.log('强制刷新首页数据')
+  refreshPoints()
+  loadLatestData()
+}
+
+// 监听路由进入，确保每次回到首页都刷新数据
+const handleRouteEnter = (to, from) => {
+  if (to.name === 'home') {
+    console.log('回到首页，刷新数据')
+    nextTick(() => {
+      forceRefresh()
+    })
+  }
+}
+
+// 注册路由守卫
+router.beforeEach(handleRouteEnter)
 </script>
 
 <template>
-  <div class="home-container">
-    <div class="header">
-      <h1 class="title">Java面试助手</h1>
-      <div class="header-actions">
-        <p class="subtitle">快速查找Java相关面试题及答案</p>
+  <div class="home">
+    <!-- 顶部搜索框 -->
+    <div class="search-box">
+      <el-input v-model="searchKeyword" placeholder="请输入关键词搜索面试题..." class="search-input" @keyup.enter="handleSearch"
+        clearable>
+        <template #prefix>
+          <el-icon>
+            <Search />
+          </el-icon>
+        </template>
+        <template #append>
+          <el-button @click="handleSearch" :loading="isSearching">
+            <el-icon v-if="!isSearching">
+              <Search />
+            </el-icon>
+            <span>搜索</span>
+          </el-button>
+        </template>
+      </el-input>
+    </div>
+
+    <!-- 分类展示 -->
+    <div class="categories-container">
+      <h2 class="category-title">
+        <el-icon>
+          <CollectionTag />
+        </el-icon>
+        <span>面试题分类</span>
+      </h2>
+      <div class="categories">
+        <router-link v-for="category in safeCategories" :key="category" :to="{ name: 'category', params: { category } }"
+          class="category-card">
+          <el-card shadow="hover">
+            <div class="category-content">
+              <h3>{{ category }}</h3>
+              <span class="question-count">
+                {{ getQuestionCount(category) }} 题
+              </span>
+            </div>
+          </el-card>
+        </router-link>
       </div>
     </div>
 
@@ -149,32 +292,12 @@ onMounted(() => {
         </el-icon>
         模拟面试
       </el-button>
-    </div>
-
-    <!-- 搜索栏 -->
-    <div class="search-container">
-      <el-input v-model="searchKeyword" placeholder="输入关键词搜索面试题..." class="search-input" @keyup.enter="handleSearch"
-        size="small">
-        <template #append>
-          <el-button @click="handleSearch" size="small">
-            <el-icon>
-              <Search />
-            </el-icon>
-            搜索
-          </el-button>
-        </template>
-      </el-input>
-    </div>
-
-    <!-- 分类菜单 -->
-    <div class="category-section">
-      <h2 class="section-title">面试题分类</h2>
-      <div class="category-menu">
-        <div v-for="category in categories" :key="category.id" class="category-item"
-          @click="handleCategoryClick(category.id)">
-          {{ category.name }}
-        </div>
-      </div>
+      <el-button type="info" class="data-manager-button" size="small" @click="showDataManagerDialog">
+        <el-icon>
+          <DataLine />
+        </el-icon>
+        数据管理
+      </el-button>
     </div>
 
     <!-- 对话框 -->
@@ -213,45 +336,85 @@ onMounted(() => {
     <el-dialog v-model="showPointsInputDialog" title="设置积分" width="400px" center>
       <PointsInput @points-changed="refreshPoints" />
     </el-dialog>
+
+    <!-- 数据管理对话框 -->
+    <el-dialog v-model="dataManagerDialogVisible" title="数据管理" width="600px" destroy-on-close>
+      <DataManagerUI />
+    </el-dialog>
   </div>
 </template>
 
 <style scoped>
-.home-container {
-  max-width: 100%;
+.home {
+  max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
+}
+
+.search-box {
+  margin-bottom: 30px;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.search-input {
+  width: 100%;
+}
+
+.category-title {
   display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  position: relative;
-}
-
-.header {
-  text-align: center;
+  align-items: center;
+  gap: 10px;
   margin-bottom: 20px;
+  color: #409EFF;
 }
 
-.header-actions {
+.categories {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.category-card {
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.3s;
+}
+
+.category-card:hover {
+  transform: translateY(-5px);
+}
+
+.category-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  margin-top: 5px;
+  justify-content: center;
+  min-height: 100px;
 }
 
-.title {
-  font-size: 2rem;
-  color: #409EFF;
-  margin-bottom: 5px;
+.category-content h3 {
+  margin: 0;
+  margin-bottom: 10px;
+  color: #303133;
 }
 
-.subtitle {
-  font-size: 1rem;
-  color: #606266;
+.question-count {
+  font-size: 14px;
+  color: #909399;
 }
 
-/* 右上角功能区 */
+@media (max-width: 768px) {
+  .categories {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+
+  .category-content {
+    min-height: 80px;
+  }
+}
+
 .top-right-features {
   position: absolute;
   top: 20px;
@@ -301,67 +464,19 @@ onMounted(() => {
   gap: 5px;
 }
 
-/* 主要操作按钮 */
 .main-actions {
   display: flex;
   justify-content: center;
   gap: 10px;
-  margin-bottom: 20px;
+  margin-top: 20px;
 }
 
-.search-container {
-  max-width: 600px;
-  margin: 0 auto 30px;
-}
-
-.search-input {
-  font-size: 0.95rem;
-}
-
-.section-title {
-  font-size: 1.5rem;
-  color: #303133;
-  margin-bottom: 20px;
-  text-align: center;
-}
-
-.category-section {
-  margin: 0 auto;
-  width: 100%;
-  max-width: 800px;
-}
-
-.category-menu {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 15px;
-}
-
-.category-item {
-  background-color: #fff;
-  border: 1px solid #e4e7ed;
-  border-radius: 4px;
-  padding: 15px 20px;
-  cursor: pointer;
-  transition: all 0.3s;
-  text-align: center;
-  min-width: 120px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.category-item:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  border-color: #c6e2ff;
-  color: #409EFF;
-}
-
-.edit-button {
+.edit-button,
+.mock-interview-button,
+.data-manager-button {
   margin: 0;
 }
 
-/* 积分信息样式 */
 .points-info {
   margin-top: 20px;
   padding-top: 20px;

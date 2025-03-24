@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { categories, interviewQuestions } from '@/data/interviewData'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { addPoints } from '@/utils/PointsManager'
+import { addInterviewQuestion, saveCustomData, getCurrentData, deleteInterviewQuestion, editCategory as updateCategory } from '@/utils/DataManager'
 
 const router = useRouter()
 const route = useRoute()
@@ -23,6 +24,18 @@ const form = reactive({
   question: '',
   answer: ''
 })
+
+// 新分类对话框
+const newCategoryDialogVisible = ref(false)
+const newCategoryName = ref('')
+
+// 编辑分类对话框
+const editCategoryDialogVisible = ref(false)
+const editCategoryName = ref('')
+const originalCategoryName = ref('')
+
+// 分类管理对话框
+const categoryManagerDialogVisible = ref(false)
 
 // 表单规则
 const rules = reactive({
@@ -67,6 +80,132 @@ const handleQuestionChange = () => {
   }
 }
 
+// 显示添加分类对话框
+const showAddCategoryDialog = () => {
+  newCategoryName.value = ''
+  newCategoryDialogVisible.value = true
+}
+
+// 显示分类管理对话框
+const showCategoryManagerDialog = () => {
+  categoryManagerDialogVisible.value = true
+}
+
+// 显示编辑分类对话框
+const showEditCategoryDialog = (category) => {
+  originalCategoryName.value = category
+  editCategoryName.value = category
+  editCategoryDialogVisible.value = true
+  categoryManagerDialogVisible.value = false
+}
+
+// 添加新分类
+const addNewCategory = () => {
+  if (!newCategoryName.value.trim()) {
+    ElMessage.warning('分类名称不能为空')
+    return
+  }
+
+  // 检查分类是否已存在
+  if (categories.includes(newCategoryName.value.trim())) {
+    ElMessage.warning('此分类已存在')
+    return
+  }
+
+  // 添加新分类（通过添加一个空问题来创建分类）
+  const success = addInterviewQuestion(
+    newCategoryName.value.trim(),
+    "示例问题",
+    "示例答案"
+  )
+
+  if (success) {
+    ElMessage.success('分类添加成功')
+    selectedCategory.value = newCategoryName.value.trim()
+    newCategoryDialogVisible.value = false
+
+    // 添加积分奖励
+    addPoints(20)
+  }
+}
+
+// 编辑分类名称
+const editCategory = () => {
+  if (!editCategoryName.value.trim()) {
+    ElMessage.warning('分类名称不能为空')
+    return
+  }
+
+  if (editCategoryName.value.trim() === originalCategoryName.value) {
+    ElMessage.info('分类名称未变更')
+    editCategoryDialogVisible.value = false
+    categoryManagerDialogVisible.value = true
+    return
+  }
+
+  // 使用统一的编辑分类功能
+  const success = updateCategory(originalCategoryName.value, editCategoryName.value.trim())
+
+  if (success) {
+    ElMessage.success('分类名称修改成功')
+
+    // 如果当前选中的是被修改的分类，更新选中的分类
+    if (selectedCategory.value === originalCategoryName.value) {
+      selectedCategory.value = editCategoryName.value.trim()
+    }
+
+    // 添加积分奖励
+    addPoints(10)
+
+    editCategoryDialogVisible.value = false
+    categoryManagerDialogVisible.value = true
+  } else {
+    ElMessage.error('编辑分类失败，可能该分类已存在')
+  }
+}
+
+// 删除分类
+const deleteCategory = (category) => {
+  ElMessageBox.confirm(
+    `确定要删除"${category}"分类吗？此操作将删除该分类下的所有问题！`,
+    '警告',
+    {
+      confirmButtonText: '确定删除',
+      cancelButtonText: '取消',
+      type: 'warning'
+    }
+  ).then(() => {
+    try {
+      // 获取当前数据
+      const data = getCurrentData()
+
+      // 从categories中删除
+      const categoryIndex = data.categories.indexOf(category)
+      if (categoryIndex !== -1) {
+        data.categories.splice(categoryIndex, 1)
+
+        // 删除该分类下的所有问题
+        delete data.interviewQuestions[category]
+
+        // 保存数据
+        if (saveCustomData(data)) {
+          ElMessage.success('分类删除成功')
+
+          // 如果当前选中的是被删除的分类，清空选中
+          if (selectedCategory.value === category) {
+            selectedCategory.value = ''
+          }
+        }
+      }
+    } catch (error) {
+      console.error('删除分类失败:', error)
+      ElMessage.error('删除分类失败: ' + error.message)
+    }
+  }).catch(() => {
+    // 用户取消删除操作
+  })
+}
+
 // 重置表单
 const resetForm = () => {
   form.id = ''
@@ -94,39 +233,91 @@ const submitForm = async () => {
 
 // 添加问题
 const addQuestion = () => {
-  // 在实际应用中，这里会调用API保存数据
-  // 由于这是静态应用，我们只显示一个成功消息
+  try {
+    // 生成一个新的ID
+    const newId = `${selectedCategory.value}-${Date.now()}`
 
-  // 生成一个新的ID
-  const newId = `${selectedCategory.value}-${Date.now()}`
+    // 获取当前数据
+    const data = getCurrentData()
 
-  // 添加积分奖励
-  addPoints(20)
+    // 确保分类存在
+    if (!data.interviewQuestions[selectedCategory.value]) {
+      data.interviewQuestions[selectedCategory.value] = []
+    }
 
-  ElMessage({
-    type: 'success',
-    message: '问题添加成功！获得20积分奖励。在实际应用中，这将保存到数据库。'
-  })
+    // 添加新问题
+    data.interviewQuestions[selectedCategory.value].push({
+      id: newId,
+      question: form.question,
+      answer: form.answer
+    })
 
-  // 添加成功后返回首页
-  router.push('/')
+    // 保存数据
+    if (saveCustomData(data)) {
+      // 添加积分奖励
+      addPoints(20)
+
+      ElMessage({
+        type: 'success',
+        message: '问题添加成功！获得20积分奖励。'
+      })
+
+      // 跳转到该分类的页面，以查看新添加的问题
+      router.push({
+        path: `/category/${selectedCategory.value}`
+      })
+    } else {
+      ElMessage.error('保存问题失败')
+    }
+  } catch (error) {
+    console.error('添加问题失败:', error)
+    ElMessage.error('添加问题失败: ' + error.message)
+  }
 }
 
 // 更新问题
 const updateQuestion = () => {
-  // 在实际应用中，这里会调用API更新数据
-  // 由于这是静态应用，我们只显示一个成功消息
+  try {
+    // 获取当前数据
+    const data = getCurrentData()
 
-  // 添加积分奖励
-  addPoints(20)
+    // 找到要更新的问题索引
+    const questionList = data.interviewQuestions[selectedCategory.value] || []
+    const questionIndex = questionList.findIndex(q => q.id === selectedQuestion.value)
 
-  ElMessage({
-    type: 'success',
-    message: '问题更新成功！获得20积分奖励。在实际应用中，这将更新到数据库。'
-  })
+    if (questionIndex === -1) {
+      ElMessage.error('找不到要更新的问题')
+      return
+    }
 
-  // 更新成功后返回首页
-  router.push('/')
+    // 更新问题
+    data.interviewQuestions[selectedCategory.value][questionIndex] = {
+      id: selectedQuestion.value,
+      question: form.question,
+      answer: form.answer
+    }
+
+    // 保存数据
+    if (saveCustomData(data)) {
+      // 添加积分奖励
+      addPoints(20)
+
+      ElMessage({
+        type: 'success',
+        message: '问题更新成功！获得20积分奖励。'
+      })
+
+      // 跳转到该分类的页面，以查看更新后的问题
+      router.push({
+        path: `/category/${selectedCategory.value}`
+      })
+    } else {
+      ElMessage.error('保存问题失败')
+    }
+  } catch (error) {
+    console.error('更新问题失败:', error)
+    ElMessage.error('更新问题失败: ' + error.message)
+  }
 }
 
 // 删除问题
@@ -143,19 +334,52 @@ const deleteQuestion = () => {
     }
   )
     .then(() => {
-      // 在实际应用中，这里会调用API删除数据
-      ElMessage({
-        type: 'success',
-        message: '问题删除成功！在实际应用中，这将从数据库中删除。'
-      })
-      selectedQuestion.value = ''
-      resetForm()
+      try {
+        // 获取当前数据
+        const data = getCurrentData()
 
-      // 删除成功后返回首页
-      router.push('/')
+        // 找到要删除的问题索引
+        const questionList = data.interviewQuestions[selectedCategory.value] || []
+        const questionIndex = questionList.findIndex(q => q.id === selectedQuestion.value)
+
+        if (questionIndex === -1) {
+          ElMessage.error('找不到要删除的问题')
+          return
+        }
+
+        // 删除问题
+        data.interviewQuestions[selectedCategory.value].splice(questionIndex, 1)
+
+        // 如果分类中没有问题了，考虑是否删除该分类
+        if (data.interviewQuestions[selectedCategory.value].length === 0) {
+          // 这里可以选择是否删除空分类，暂时保留空分类
+          // delete data.interviewQuestions[selectedCategory.value]
+        }
+
+        // 保存数据
+        if (saveCustomData(data)) {
+          ElMessage({
+            type: 'success',
+            message: '问题删除成功！'
+          })
+
+          selectedQuestion.value = ''
+          resetForm()
+
+          // 跳转到该分类的页面
+          router.push({
+            path: `/category/${selectedCategory.value}`
+          })
+        } else {
+          ElMessage.error('删除问题失败')
+        }
+      } catch (error) {
+        console.error('删除问题失败:', error)
+        ElMessage.error('删除问题失败: ' + error.message)
+      }
     })
     .catch(() => {
-      // 取消删除
+      // 用户取消删除
     })
 }
 
@@ -227,10 +451,17 @@ onMounted(async () => {
       <div class="selector-container">
         <el-form :inline="true" size="small">
           <el-form-item label="选择分类">
-            <el-select v-model="selectedCategory" placeholder="请选择分类" @change="handleCategoryChange" size="small">
-              <el-option v-for="category in categories" :key="category.id" :label="category.name"
-                :value="category.id" />
-            </el-select>
+            <div class="category-select-group">
+              <el-select v-model="selectedCategory" placeholder="请选择分类" @change="handleCategoryChange" size="small">
+                <el-option v-for="category in categories" :key="category.id" :label="category" :value="category" />
+              </el-select>
+              <el-button type="warning" size="small" @click="showCategoryManagerDialog">
+                <el-icon>
+                  <Setting />
+                </el-icon>
+                管理分类
+              </el-button>
+            </div>
           </el-form-item>
 
           <el-form-item label="选择问题" v-if="selectedCategory">
@@ -271,6 +502,75 @@ onMounted(async () => {
         <el-empty description="请先选择一个分类" />
       </div>
     </div>
+
+    <!-- 添加新分类对话框 -->
+    <el-dialog v-model="newCategoryDialogVisible" title="添加新分类" width="400px">
+      <el-form>
+        <el-form-item label="分类名称">
+          <el-input v-model="newCategoryName" placeholder="请输入分类名称"></el-input>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="newCategoryDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="addNewCategory">添加</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
+    <!-- 分类管理对话框 -->
+    <el-dialog v-model="categoryManagerDialogVisible" title="分类管理" width="500px">
+      <div class="category-manager">
+        <p class="category-manager-tip">在这里您可以管理（编辑或删除）已有的分类。</p>
+
+        <el-table :data="categories" style="width: 100%" v-if="categories.length > 0">
+          <el-table-column prop="name" label="分类名称">
+            <template #default="{ row }">
+              {{ row }}
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="150">
+            <template #default="{ row }">
+              <div class="operation-buttons">
+                <el-button type="primary" size="small" @click="showEditCategoryDialog(row)">
+                  <el-icon>
+                    <Edit />
+                  </el-icon> 编辑
+                </el-button>
+                <el-button type="danger" size="small" @click="deleteCategory(row)">
+                  <el-icon>
+                    <Delete />
+                  </el-icon> 删除
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <el-empty v-else description="暂无分类数据"></el-empty>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="categoryManagerDialogVisible = false">关闭</el-button>
+          <el-button type="primary" @click="showAddCategoryDialog">添加新分类</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
+    <!-- 编辑分类对话框 -->
+    <el-dialog v-model="editCategoryDialogVisible" title="编辑分类" width="400px">
+      <el-form>
+        <el-form-item label="分类名称">
+          <el-input v-model="editCategoryName" placeholder="请输入新的分类名称"></el-input>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="editCategoryDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="editCategory">保存</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -313,6 +613,12 @@ onMounted(async () => {
 
 .selector-container {
   margin-bottom: 20px;
+}
+
+.category-select-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .form-container {
@@ -377,5 +683,25 @@ onMounted(async () => {
 .empty-state {
   margin: 30px 0;
   text-align: center;
+}
+
+.category-manager-tip {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #606266;
+  font-size: 0.9rem;
+}
+
+.operation-buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.operation-buttons .el-button {
+  width: 100px;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
 }
 </style>

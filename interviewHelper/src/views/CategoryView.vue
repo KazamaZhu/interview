@@ -1,405 +1,467 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { categories, interviewQuestions } from '@/data/interviewData'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { addInterviewQuestion, updateInterviewQuestion, deleteInterviewQuestion, getCurrentData } from '@/utils/DataManager'
 
 const route = useRoute()
 const router = useRouter()
 
-// 当前分类ID
-const categoryId = computed(() => route.params.category)
+// 用于触发刷新的标志
+const refreshTrigger = ref(0)
 
-// 当前分类信息
-const currentCategory = computed(() => {
-  return categories.find(cat => cat.id === categoryId.value) || { name: '未知分类' }
-})
+// 当前分类
+const currentCategory = computed(() => route.params.category)
 
-// 当前分类下的问题列表
+// 本地存储的问题
+const localQuestions = ref([])
+
+// 当前分类的问题列表
 const questions = computed(() => {
-  return interviewQuestions[categoryId.value] || []
-})
-
-// 当前展开的问题ID
-const expandedQuestionId = ref('')
-
-// 搜索关键词
-const searchKeyword = ref('')
-
-// 搜索结果
-const filteredQuestions = computed(() => {
-  if (!searchKeyword.value.trim()) {
-    return questions.value
+  // 优先使用本地加载的最新数据
+  if (localQuestions.value.length > 0) {
+    return localQuestions.value
   }
-
-  const keyword = searchKeyword.value.toLowerCase()
-  return questions.value.filter(question =>
-    question.question.toLowerCase().includes(keyword) ||
-    question.answer.toLowerCase().includes(keyword)
-  )
+  // 否则使用导入的数据
+  return interviewQuestions[currentCategory.value] || []
 })
 
-// 获取当前选中的问题
-const getCurrentQuestion = computed(() => {
-  if (!expandedQuestionId.value) return null
-  return filteredQuestions.value.find(q => q.id === expandedQuestionId.value)
-})
-
-// 切换问题展开状态
-const toggleQuestion = (questionId) => {
-  if (expandedQuestionId.value === questionId) {
-    expandedQuestionId.value = ''
-  } else {
-    expandedQuestionId.value = questionId
+// 加载最新数据
+const loadLatestData = () => {
+  try {
+    const data = getCurrentData()
+    if (data && data.interviewQuestions && data.interviewQuestions[currentCategory.value]) {
+      localQuestions.value = data.interviewQuestions[currentCategory.value]
+    } else {
+      localQuestions.value = []
+    }
+    refreshTrigger.value++
+  } catch (error) {
+    console.error('加载最新数据失败:', error)
+    localQuestions.value = []
   }
 }
+
+// 显示问题的答案
+const visibleAnswers = ref(new Set())
+
+// 切换答案显示状态
+const toggleAnswer = (index) => {
+  if (visibleAnswers.value.has(index)) {
+    visibleAnswers.value.delete(index)
+  } else {
+    visibleAnswers.value.add(index)
+  }
+}
+
+// 收起所有答案
+const collapseAllAnswers = () => {
+  // 清空所有可见答案
+  visibleAnswers.value.clear()
+  // 移除成功提示
+}
+
+// 检查分类是否存在
+const categoryExists = computed(() => {
+  // 从当前数据中获取最新的分类列表
+  try {
+    const data = getCurrentData()
+    if (data && Array.isArray(data.categories)) {
+      return data.categories.includes(currentCategory.value)
+    }
+  } catch (error) {
+    console.error('检查分类存在性时出错:', error)
+  }
+
+  // 如果无法获取最新数据，则回退到导入的静态数据
+  return categories.includes(currentCategory.value)
+})
+
+// 如果分类不存在，重定向到首页
+onMounted(() => {
+  // 立即同步检查分类是否存在
+  if (!categoryExists.value) {
+    ElMessage.error({
+      message: `分类 "${currentCategory.value}" 不存在或已被删除`,
+      duration: 5000 // 显示5秒
+    })
+
+    // 在重定向之前，确保我们使用了最新的数据
+    loadLatestData()
+
+    // 如果再次检查仍确认分类不存在，才重定向
+    if (!categoryExists.value) {
+      console.error(`分类 "${currentCategory.value}" 不存在，重定向到首页`)
+      router.replace({
+        name: 'home',
+        query: { error: 'category_not_found', category: currentCategory.value }
+      })
+    }
+  } else {
+    // 加载最新数据
+    loadLatestData()
+  }
+})
+
+// 监听路由参数变化，刷新数据并检查分类存在性
+watch(() => route.params.category, (newCategory) => {
+  if (newCategory) {
+    // 先加载最新数据
+    loadLatestData()
+
+    // 检查分类是否存在
+    if (!categoryExists.value) {
+      ElMessage.error({
+        message: `分类 "${currentCategory.value}" 不存在或已被删除`,
+        duration: 5000
+      })
+      router.replace({
+        name: 'home',
+        query: { error: 'category_not_found', category: currentCategory.value }
+      })
+    }
+  }
+})
 
 // 返回首页
 const goBack = () => {
-  router.push('/')
+  // 使用replace而不是push，可以避免路由堆栈问题
+  // 并且使用name确保路由配置正确匹配
+  router.replace({
+    name: 'home',
+    // 添加一个时间戳查询参数，确保视图重新渲染
+    query: {
+      t: Date.now()
+    }
+  }).catch(err => {
+    console.error('导航错误:', err)
+    // 使用后备方案直接跳转
+    window.location.href = '/'
+  })
 }
 
-// 全局搜索
-const handleGlobalSearch = () => {
-  if (searchKeyword.value.trim()) {
-    router.push({
-      path: '/search',
-      query: { keyword: searchKeyword.value.trim() }
-    })
+// 编辑相关
+const showEditForm = ref(false)
+const editMode = ref('add') // 'add' 或 'edit'
+const editIndex = ref(-1)
+const editData = ref({
+  question: '',
+  answer: ''
+})
+
+// 打开添加表单
+const openAddForm = () => {
+  editMode.value = 'add'
+  editData.value = {
+    question: '',
+    answer: ''
+  }
+  showEditForm.value = true
+}
+
+// 打开编辑表单
+const openEditForm = (index) => {
+  editMode.value = 'edit'
+  editIndex.value = index
+  const question = questions.value[index]
+  editData.value = {
+    question: question.question,
+    answer: question.answer
+  }
+  showEditForm.value = true
+}
+
+// 保存问题
+const saveQuestion = () => {
+  // 验证表单
+  if (!editData.value.question.trim()) {
+    ElMessage.warning('问题不能为空')
+    return
+  }
+
+  if (!editData.value.answer.trim()) {
+    ElMessage.warning('答案不能为空')
+    return
+  }
+
+  let success = false
+
+  if (editMode.value === 'add') {
+    // 添加新问题
+    success = addInterviewQuestion(
+      currentCategory.value,
+      editData.value.question,
+      editData.value.answer
+    )
+  } else {
+    // 更新问题
+    success = updateInterviewQuestion(
+      currentCategory.value,
+      editIndex.value,
+      editData.value.question,
+      editData.value.answer
+    )
+  }
+
+  if (success) {
+    showEditForm.value = false
+    // 重新加载最新数据
+    loadLatestData()
+
+    // 如果是新添加的问题，自动显示其答案
+    if (editMode.value === 'add') {
+      setTimeout(() => {
+        visibleAnswers.value.add(localQuestions.value.length - 1)
+      }, 100)
+    }
   }
 }
 
-// 添加一个新函数用于编辑当前问题
-const editCurrentQuestion = () => {
-  if (!getCurrentQuestion.value) return
-
-  router.push({
-    path: '/edit',
-    query: {
-      category: categoryId.value,
-      question: expandedQuestionId.value
+// 删除问题
+const confirmDelete = (index) => {
+  ElMessageBox.confirm(
+    '确定要删除这个问题吗？此操作不可撤销。',
+    '删除确认',
+    {
+      confirmButtonText: '确定删除',
+      cancelButtonText: '取消',
+      type: 'warning'
     }
+  ).then(() => {
+    const success = deleteInterviewQuestion(currentCategory.value, index)
+    if (success) {
+      visibleAnswers.value.delete(index)
+
+      // 重新加载最新数据
+      loadLatestData()
+
+      // 更新可见答案的索引
+      const newVisibleAnswers = new Set()
+      visibleAnswers.value.forEach(oldIndex => {
+        if (oldIndex > index) {
+          newVisibleAnswers.add(oldIndex - 1)
+        } else if (oldIndex < index) {
+          newVisibleAnswers.add(oldIndex)
+        }
+      })
+      visibleAnswers.value = newVisibleAnswers
+    }
+  }).catch(() => {
+    // 用户取消删除
   })
 }
 </script>
 
 <template>
-  <div class="category-view">
-    <div class="page-layout">
-      <!-- 左侧面板：包含头部、搜索和问题列表 -->
-      <div class="left-panel">
-        <div class="category-header">
-          <el-button @click="goBack" type="primary" plain size="small">
-            <el-icon>
-              <Back />
-            </el-icon>
-            返回首页
-          </el-button>
-          <h1>{{ currentCategory.name }}</h1>
-        </div>
+  <div class="category-view" v-if="categoryExists">
+    <div class="category-header">
+      <el-button @click="goBack" size="small" type="default">
+        <el-icon>
+          <ArrowLeft />
+        </el-icon>
+        返回
+      </el-button>
 
-        <!-- 搜索栏 -->
-        <div class="search-container">
-          <el-input v-model="searchKeyword" placeholder="在当前分类中搜索..." class="search-input" size="small" clearable>
-            <template #append>
-              <el-button @click="handleGlobalSearch" size="small" type="primary">
-                <el-icon>
-                  <Search />
-                </el-icon>
-                全局搜索
-              </el-button>
-            </template>
-          </el-input>
-        </div>
+      <h1 class="category-title">{{ currentCategory }}</h1>
 
-        <div class="result-count" v-if="searchKeyword.trim() && filteredQuestions.length > 0">
-          找到 {{ filteredQuestions.length }} 条结果
-        </div>
+      <div class="action-buttons">
+        <el-button @click="collapseAllAnswers" size="small" type="info" class="collapse-button">
+          <el-icon>
+            <CaretTop />
+          </el-icon>
+          全部收起
+        </el-button>
 
-        <!-- 问题列表 -->
-        <div class="questions-list" v-if="filteredQuestions.length > 0">
-          <div class="question-grid">
-            <div v-for="question in filteredQuestions" :key="question.id" class="question-item"
-              :class="{ 'active': expandedQuestionId === question.id }" @click="toggleQuestion(question.id)">
-              <div class="question-card">
-                <h3>{{ question.question }}</h3>
-                <el-icon class="expand-icon" :class="{ 'is-expanded': expandedQuestionId === question.id }">
-                  <ArrowDown />
-                </el-icon>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div v-else class="empty-state">
-          <el-empty :description="searchKeyword.trim() ? '未找到匹配的面试题' : '该分类下暂无面试题'" />
-        </div>
+        <el-button @click="openAddForm" size="small" type="primary">
+          <el-icon>
+            <Plus />
+          </el-icon>
+          添加问题
+        </el-button>
       </div>
+    </div>
 
-      <!-- 右侧面板：显示答案 -->
-      <div class="right-panel">
-        <div v-if="expandedQuestionId && getCurrentQuestion" class="answer-container">
-          <div class="answer-header">
-            <h3>问题详情</h3>
-            <el-button @click="editCurrentQuestion" type="primary" size="small" plain>
+    <div class="questions-container">
+      <el-empty v-if="questions.length === 0" description="此分类下暂无面试题">
+        <el-button type="primary" @click="openAddForm">添加第一个问题</el-button>
+      </el-empty>
+
+      <div v-for="(question, index) in questions" :key="index" class="question-item">
+        <div class="question-header">
+          <h3 class="question-title">
+            <span class="question-index">{{ index + 1 }}.</span>
+            {{ question.question }}
+          </h3>
+
+          <div class="question-actions">
+            <el-button @click="openEditForm(index)" size="small" type="primary" text>
               <el-icon>
                 <Edit />
               </el-icon>
-              编辑
+            </el-button>
+
+            <el-button @click="confirmDelete(index)" size="small" type="danger" text>
+              <el-icon>
+                <Delete />
+              </el-icon>
+            </el-button>
+
+            <el-button @click="toggleAnswer(index)" size="small" text>
+              <el-icon v-if="visibleAnswers.has(index)">
+                <ArrowUp />
+              </el-icon>
+              <el-icon v-else>
+                <ArrowDown />
+              </el-icon>
             </el-button>
           </div>
-          <div class="answer-content">
-            <div class="question-title">{{ getCurrentQuestion.question }}</div>
-            <div class="divider"></div>
-            <div class="answer" v-html="getCurrentQuestion.answer.replace(/\n/g, '<br>')"></div>
-          </div>
         </div>
-        <div v-else class="empty-answer">
-          <div class="empty-content">
-            <el-icon class="empty-icon">
-              <Document />
-            </el-icon>
-            <p>请选择一个问题查看答案</p>
-          </div>
+
+        <div v-if="visibleAnswers.has(index)" class="answer-container">
+          <pre class="answer-content">{{ question.answer }}</pre>
         </div>
       </div>
     </div>
+
+    <!-- 编辑/添加表单对话框 -->
+    <el-dialog v-model="showEditForm" :title="editMode === 'add' ? '添加问题' : '编辑问题'" width="70%" destroy-on-close>
+      <el-form label-position="top">
+        <el-form-item label="问题">
+          <el-input v-model="editData.question" type="textarea" :rows="2" placeholder="请输入问题内容"></el-input>
+        </el-form-item>
+
+        <el-form-item label="答案">
+          <el-input v-model="editData.answer" type="textarea" :rows="8" placeholder="请输入答案内容"></el-input>
+        </el-form-item>
+      </el-form>
+
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="showEditForm = false">取消</el-button>
+          <el-button type="primary" @click="saveQuestion">保存</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <style scoped>
 .category-view {
-  max-width: 100%;
+  max-width: 1000px;
   margin: 0 auto;
   padding: 20px;
-  min-height: 100vh;
-}
-
-.page-layout {
-  display: flex;
-  gap: 20px;
-  min-height: calc(100vh - 40px);
-}
-
-/* 左侧面板样式 */
-.left-panel {
-  width: 60%;
-  display: flex;
-  flex-direction: column;
-}
-
-/* 右侧面板样式 */
-.right-panel {
-  width: 40%;
-  position: sticky;
-  top: 20px;
-  height: auto;
-  min-height: 500px;
-  max-height: calc(100vh - 40px);
-  border-radius: 8px;
-  border: 1px solid #EBEEF5;
-  background-color: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
 }
 
 .category-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   margin-bottom: 20px;
 }
 
-.category-header h1 {
-  margin: 0 0 0 15px;
-  font-size: 1.6rem;
+.category-title {
+  margin: 0;
+  font-size: 1.5rem;
   color: #409EFF;
+  text-align: center;
+  flex-grow: 1;
 }
 
-.search-container {
-  margin-bottom: 20px;
+.action-buttons {
+  display: flex;
+  gap: 10px;
 }
 
-.search-input {
-  font-size: 0.95rem;
+.collapse-button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
-.result-count {
-  margin-bottom: 10px;
-  color: #606266;
-  font-size: 0.9rem;
-}
-
-.questions-list {
-  flex: 1;
-  overflow-y: auto;
-}
-
-.question-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 15px;
-  margin-bottom: 20px;
+.questions-container {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  padding: 20px;
 }
 
 .question-item {
-  width: 100%;
+  border-bottom: 1px solid #ebeef5;
+  padding: 15px 0;
 }
 
-.question-card {
-  background-color: #fff;
-  border-radius: 6px;
-  padding: 15px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  cursor: pointer;
-  transition: all 0.3s;
+.question-item:last-child {
+  border-bottom: none;
+}
+
+.question-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  height: 100%;
-}
-
-.question-item.active .question-card {
-  border-left: 3px solid #409EFF;
-  background-color: #f0f7ff;
-}
-
-.question-card:hover {
-  box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.15);
-}
-
-.question-card h3 {
-  margin: 0;
-  font-size: 1.1rem;
-  color: #303133;
-  line-height: 1.3;
-  flex: 1;
-  word-break: break-word;
-}
-
-.expand-icon {
-  font-size: 1.1rem;
-  transition: transform 0.3s;
-  flex-shrink: 0;
-  margin-left: 10px;
-  margin-top: 3px;
-}
-
-.expand-icon.is-expanded {
-  transform: rotate(180deg);
-}
-
-.answer-header {
-  padding: 12px 16px;
-  background-color: #f5f7fa;
-  border-bottom: 1px solid #EBEEF5;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.answer-header h3 {
-  margin: 0;
-  font-size: 1.1rem;
-  color: #303133;
-  font-weight: 600;
-}
-
-.answer-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  width: 100%;
-}
-
-.answer-content {
-  padding: 20px;
-  overflow-y: auto;
-  flex: 1;
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
 }
 
 .question-title {
-  font-size: 1.2rem;
-  font-weight: 600;
+  margin: 0;
+  font-size: 1.1rem;
   color: #303133;
-  margin-bottom: 16px;
-  line-height: 1.4;
-  width: 100%;
+  flex-grow: 1;
+  padding-right: 10px;
 }
 
-.divider {
-  height: 1px;
-  background-color: #EBEEF5;
-  margin-bottom: 16px;
-  width: 100%;
+.question-index {
+  color: #409EFF;
+  font-weight: bold;
+  margin-right: 8px;
 }
 
-.answer {
-  color: #303133;
-  line-height: 1.7;
-  font-size: 1rem;
-  letter-spacing: 0.3px;
-  white-space: normal;
-  word-break: normal;
-  overflow-wrap: normal;
-  width: 100%;
-  min-width: 80%;
-  box-sizing: border-box;
-}
-
-.answer br {
-  margin-bottom: 10px;
-  display: block;
-}
-
-.empty-answer {
-  flex: 1;
+.question-actions {
   display: flex;
-  justify-content: center;
-  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
 }
 
-.empty-content {
-  text-align: center;
-  color: #909399;
+.answer-container {
+  margin-top: 15px;
+  padding: 15px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+  overflow-x: auto;
 }
 
-.empty-icon {
-  font-size: 48px;
-  margin-bottom: 10px;
-  color: #DCDFE6;
+.answer-content {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: inherit;
+  line-height: 1.5;
+  color: #606266;
 }
 
-.empty-state {
-  margin-top: 50px;
-  text-align: center;
-}
-
-@media (max-width: 992px) {
-  .question-grid {
-    grid-template-columns: 1fr;
-  }
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 @media (max-width: 768px) {
-  .page-layout {
+  .category-header {
     flex-direction: column;
+    gap: 10px;
   }
 
-  .left-panel,
-  .right-panel {
+  .action-buttons {
     width: 100%;
+    justify-content: center;
   }
 
-  .right-panel {
-    margin-top: 20px;
-    min-height: 500px;
-    height: auto;
-    position: static;
+  .question-header {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .question-actions {
+    width: 100%;
+    justify-content: flex-end;
   }
 }
 </style>

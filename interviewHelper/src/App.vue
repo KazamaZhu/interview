@@ -5,7 +5,18 @@ import { RouterView } from 'vue-router'
 <template>
   <div class="app-container">
     <el-config-provider>
-      <RouterView />
+      <router-view v-slot="{ Component }">
+        <template v-if="Component">
+          <suspense>
+            <component :is="Component" />
+            <template #fallback>
+              <div class="loading-container">
+                <el-skeleton :rows="6" animated />
+              </div>
+            </template>
+          </suspense>
+        </template>
+      </router-view>
     </el-config-provider>
   </div>
 </template>
@@ -17,7 +28,8 @@ import { RouterView } from 'vue-router'
   padding: 0;
 }
 
-html, body {
+html,
+body {
   height: 100%;
   width: 100%;
 }
@@ -34,6 +46,15 @@ body {
   min-height: 100vh;
   width: 100%;
   max-width: 100%;
+}
+
+.loading-container {
+  max-width: 1200px;
+  margin: 20px auto;
+  padding: 20px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
 }
 
 pre {
