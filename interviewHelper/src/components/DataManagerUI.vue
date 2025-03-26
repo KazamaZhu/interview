@@ -1,7 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import { exportData, importData, resetData } from '@/utils/DataManager'
-import { ElMessageBox } from 'element-plus'
+import { ElMessageBox, ElMessage } from 'element-plus'
 
 // 文件输入引用
 const fileInput = ref(null)
@@ -19,7 +19,28 @@ const triggerFileSelection = () => {
 // 处理文件选择
 const handleFileChange = async (event) => {
     const file = event.target.files[0]
-    if (file) {
+    if (!file) {
+        console.log('没有选择文件')
+        return
+    }
+
+    console.log('选择文件:', file.name, 'type:', file.type, 'size:', file.size)
+
+    // 检查文件类型
+    if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
+        ElMessage.warning('请选择JSON格式的文件')
+        event.target.value = ''
+        return
+    }
+
+    // 检查文件大小
+    if (file.size > 10 * 1024 * 1024) { // 10MB限制
+        ElMessage.warning('文件过大，请选择小于10MB的文件')
+        event.target.value = ''
+        return
+    }
+
+    try {
         const success = await importData(file)
         if (success) {
             // 导入成功，可能需要刷新页面
@@ -33,11 +54,19 @@ const handleFileChange = async (event) => {
                 }
             ).then(() => {
                 // 刷新页面
+                console.log('用户选择刷新页面')
                 window.location.reload()
             }).catch(() => {
                 // 用户选择不刷新
+                console.log('用户选择不刷新页面')
             })
+        } else {
+            console.error('importData函数返回失败')
         }
+    } catch (error) {
+        console.error('文件导入过程中出错:', error)
+        ElMessage.error('导入过程中出错: ' + error.message)
+    } finally {
         // 重置文件输入，以便下次选择同一文件时仍然触发事件
         event.target.value = ''
     }

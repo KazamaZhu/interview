@@ -105,33 +105,60 @@ export function saveCustomData(data) {
  */
 export function exportData() {
     try {
+        console.log('开始导出数据');
         // 获取当前数据
-        const data = getCurrentData()
+        const rawData = getCurrentData();
+
+        // 标准化数据格式，确保导出格式正确
+        const exportData = {
+            categories: [...rawData.categories],
+            interviewQuestions: {}
+        };
+
+        // 处理问题数据
+        for (const category of exportData.categories) {
+            // 确保每个分类都有问题数组
+            const questions = rawData.interviewQuestions[category] || [];
+
+            // 标准化每个问题对象
+            exportData.interviewQuestions[category] = questions.map((q, index) => {
+                // 确保每个问题对象包含必要的字段
+                return {
+                    question: q.question || `问题 ${index + 1}`,
+                    answer: q.answer || '暂无答案',
+                    // 保留其他可能的属性
+                    ...(q.id ? { id: q.id } : {})
+                };
+            });
+        }
+
+        console.log('准备导出的数据:', exportData);
 
         // 创建Blob对象
-        const jsonData = JSON.stringify(data, null, 2)
-        const blob = new Blob([jsonData], { type: 'application/json' })
+        const jsonData = JSON.stringify(exportData, null, 2);
+        const blob = new Blob([jsonData], { type: 'application/json' });
 
         // 创建下载链接
-        const link = document.createElement('a')
-        link.href = URL.createObjectURL(blob)
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
 
         // 设置文件名（使用当前日期作为文件名一部分）
-        const date = new Date()
-        const fileName = `interview-data-${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}.json`
-        link.download = fileName
+        const date = new Date();
+        const fileName = `interview-data-${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}.json`;
+        link.download = fileName;
 
         // 触发下载
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
 
-        ElMessage.success('数据导出成功')
-        return true
+        console.log('数据导出成功');
+        ElMessage.success('数据导出成功');
+        return true;
     } catch (error) {
-        console.error('导出数据失败:', error)
-        ElMessage.error('导出数据失败: ' + error.message)
-        return false
+        console.error('导出数据失败:', error);
+        ElMessage.error('导出数据失败: ' + error.message);
+        return false;
     }
 }
 
@@ -143,51 +170,143 @@ export function exportData() {
 export async function importData(file) {
     return new Promise((resolve) => {
         try {
+            console.log('开始导入数据', file.name);
+
             // 创建文件读取器
-            const reader = new FileReader()
+            const reader = new FileReader();
 
             // 设置读取完成回调
             reader.onload = (event) => {
                 try {
                     // 解析JSON数据
-                    const data = JSON.parse(event.target.result)
+                    const fileContent = event.target.result;
+                    console.log('文件内容长度:', fileContent.length);
 
-                    // 验证数据格式
-                    if (!validateData(data)) {
-                        ElMessage.error('导入的数据格式不正确')
-                        resolve(false)
-                        return
-                    }
+                    try {
+                        const data = JSON.parse(fileContent);
+                        console.log('JSON解析成功:', data);
 
-                    // 保存数据到localStorage
-                    const success = saveCustomData(data)
-                    if (success) {
-                        ElMessage.success('数据导入成功')
-                        resolve(true)
-                    } else {
-                        resolve(false)
+                        // 尝试修复数据格式问题
+                        const fixedData = fixDataFormat(data);
+
+                        // 验证数据格式
+                        if (!validateData(fixedData)) {
+                            console.error('数据验证失败');
+                            ElMessage.error('导入的数据格式不正确，请确保使用本应用导出的数据文件');
+                            resolve(false);
+                            return;
+                        }
+
+                        // 保存数据到localStorage
+                        const success = saveCustomData(fixedData);
+                        if (success) {
+                            console.log('数据保存成功');
+                            ElMessage.success('数据导入成功');
+                            resolve(true);
+                        } else {
+                            console.error('数据保存失败');
+                            resolve(false);
+                        }
+                    } catch (parseError) {
+                        console.error('JSON解析失败:', parseError);
+                        ElMessage.error('导入失败: 文件不是有效的JSON格式');
+                        resolve(false);
                     }
-                } catch (parseError) {
-                    console.error('解析导入数据失败:', parseError)
-                    ElMessage.error('导入失败: 文件不是有效的JSON格式')
-                    resolve(false)
+                } catch (error) {
+                    console.error('文件读取回调中出错:', error);
+                    ElMessage.error('处理文件内容时出错: ' + error.message);
+                    resolve(false);
                 }
-            }
+            };
 
             // 设置读取错误回调
-            reader.onerror = () => {
-                ElMessage.error('读取文件失败')
-                resolve(false)
-            }
+            reader.onerror = (error) => {
+                console.error('文件读取错误:', error);
+                ElMessage.error('读取文件失败');
+                resolve(false);
+            };
 
             // 读取文件
-            reader.readAsText(file)
+            reader.readAsText(file);
         } catch (error) {
-            console.error('导入数据失败:', error)
-            ElMessage.error('导入数据失败: ' + error.message)
-            resolve(false)
+            console.error('导入数据过程中出错:', error);
+            ElMessage.error('导入数据失败: ' + error.message);
+            resolve(false);
         }
-    })
+    });
+}
+
+/**
+ * 修复数据格式问题
+ * @param {Object} data 原始数据对象
+ * @returns {Object} 修复后的数据对象
+ */
+function fixDataFormat(data) {
+    // 如果没有基本结构，则返回默认数据
+    if (!data || typeof data !== 'object') {
+        console.warn('数据不是对象，使用默认数据');
+        return {
+            categories: [...defaultCategories],
+            interviewQuestions: { ...defaultInterviewQuestions }
+        };
+    }
+
+    // 创建一个新对象以避免修改原始对象
+    const result = {
+        categories: Array.isArray(data.categories) ? [...data.categories] : [...defaultCategories],
+        interviewQuestions: (data.interviewQuestions && typeof data.interviewQuestions === 'object')
+            ? { ...data.interviewQuestions }
+            : { ...defaultInterviewQuestions }
+    };
+
+    // 确保每个分类都有相应的问题数组
+    for (const category of result.categories) {
+        if (!result.interviewQuestions[category]) {
+            console.warn(`为分类 "${category}" 创建空问题数组`);
+            result.interviewQuestions[category] = [];
+        }
+    }
+
+    // 确保interviewQuestions中的每个分类也在categories中
+    for (const category in result.interviewQuestions) {
+        if (!result.categories.includes(category)) {
+            console.warn(`将缺失的分类 "${category}" 添加到categories数组`);
+            result.categories.push(category);
+        }
+    }
+
+    // 确保每个问题对象都有必要的属性
+    for (const category in result.interviewQuestions) {
+        const questions = result.interviewQuestions[category];
+        if (Array.isArray(questions)) {
+            for (let i = 0; i < questions.length; i++) {
+                const question = questions[i];
+                if (question && typeof question === 'object') {
+                    // 确保question属性存在
+                    if (!question.question || typeof question.question !== 'string') {
+                        question.question = question.question || `问题 ${i + 1}`;
+                    }
+
+                    // 确保answer属性存在
+                    if (!question.answer || typeof question.answer !== 'string') {
+                        question.answer = question.answer || '暂无答案';
+                    }
+                } else {
+                    // 替换无效的问题对象
+                    questions[i] = {
+                        question: `问题 ${i + 1}`,
+                        answer: '暂无答案'
+                    };
+                }
+            }
+        } else {
+            // 如果不是数组，则创建一个空数组
+            result.interviewQuestions[category] = [];
+        }
+    }
+
+    console.log('数据格式修复完成:', result);
+    return result;
 }
 
 /**
@@ -217,30 +336,56 @@ export function resetData() {
  * @returns {boolean} 是否有效
  */
 function validateData(data) {
+    console.log('开始验证导入的数据格式:', data);
+
     // 检查基本结构
-    if (!data || typeof data !== 'object') return false
+    if (!data || typeof data !== 'object') {
+        console.error('验证失败: 数据必须是一个对象');
+        return false;
+    }
 
     // 检查categories是否为数组
-    if (!Array.isArray(data.categories)) return false
+    if (!Array.isArray(data.categories)) {
+        console.error('验证失败: categories必须是一个数组');
+        return false;
+    }
 
     // 检查interviewQuestions是否为对象
-    if (!data.interviewQuestions || typeof data.interviewQuestions !== 'object') return false
+    if (!data.interviewQuestions || typeof data.interviewQuestions !== 'object') {
+        console.error('验证失败: interviewQuestions必须是一个对象');
+        return false;
+    }
 
-    // 简单检查每个分类是否在interviewQuestions中有对应的问题
+    // 检查分类中是否有非字符串值
     for (const category of data.categories) {
-        if (typeof category !== 'string') return false
-
-        // 检查是否有对应的问题数组
-        const questions = data.interviewQuestions[category]
-        if (!Array.isArray(questions)) return false
-
-        // 检查每个问题的格式
-        for (const question of questions) {
-            if (!question.question || !question.answer) return false
+        if (typeof category !== 'string') {
+            console.error('验证失败: 分类名称必须是字符串:', category);
+            return false;
         }
     }
 
-    return true
+    // 检查问题对象的格式，但更加宽松
+    for (const category in data.interviewQuestions) {
+        const questions = data.interviewQuestions[category];
+
+        // 跳过不是数组的问题集合
+        if (!Array.isArray(questions)) {
+            console.warn(`警告: 分类"${category}"的问题不是数组格式，但会继续验证其他分类`);
+            continue;
+        }
+
+        // 检查问题对象
+        for (const question of questions) {
+            // 只检查问题对象是否存在，不再严格要求question和answer属性
+            if (!question || typeof question !== 'object') {
+                console.error(`验证失败: 分类"${category}"中存在无效的问题对象:`, question);
+                return false;
+            }
+        }
+    }
+
+    console.log('数据验证通过');
+    return true;
 }
 
 /**
