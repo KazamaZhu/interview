@@ -232,29 +232,82 @@ const toggleInputMethod = () => {
 // 从每个分类中随机选择问题
 const generateRandomQuestions = () => {
     const questions = []
+    console.log('开始生成随机问题，分类列表:', categories)
 
-    // 遍历每个分类
-    categories.forEach(category => {
-        const categoryQuestions = interviewQuestions[category.id] || []
+    try {
+        // 遍历每个分类
+        categories.forEach(category => {
+            // 检查category的格式，兼容老数据格式和新数据格式
+            const categoryId = typeof category === 'object' ? category.id : category
+            const categoryName = typeof category === 'object' ? category.name : category
 
-        // 如果该分类有问题，随机选择3个（或更少，如果问题不足3个）
-        if (categoryQuestions.length > 0) {
-            // 随机打乱问题顺序
-            const shuffled = [...categoryQuestions].sort(() => 0.5 - Math.random())
+            console.log(`处理分类: ${categoryName} (ID: ${categoryId})`)
 
-            // 选择前3个问题
-            const selected = shuffled.slice(0, 3)
+            // 验证分类ID有效
+            if (!categoryId) {
+                console.warn('跳过无效分类ID:', category)
+                return
+            }
 
-            // 添加分类信息
-            selected.forEach(question => {
-                questions.push({
-                    ...question,
-                    categoryId: category.id,
-                    categoryName: category.name
-                })
-            })
-        }
-    })
+            // 获取该分类下的问题
+            const categoryQuestions = interviewQuestions[categoryId] || []
+            console.log(`分类 ${categoryName} 的问题数量:`, categoryQuestions.length)
+
+            // 如果该分类有问题，随机选择3个（或更少，如果问题不足3个）
+            if (categoryQuestions.length > 0) {
+                try {
+                    // 随机打乱问题顺序
+                    const shuffled = [...categoryQuestions].sort(() => 0.5 - Math.random())
+
+                    // 选择前3个问题
+                    const selected = shuffled.slice(0, Math.min(3, shuffled.length))
+                    console.log(`为分类 ${categoryName} 选择了 ${selected.length} 个问题`)
+
+                    // 添加分类信息
+                    selected.forEach(question => {
+                        // 确保问题是有效对象
+                        if (typeof question !== 'object' || question === null) {
+                            console.warn('跳过无效问题:', question)
+                            return
+                        }
+
+                        // 深拷贝问题对象，避免修改原始数据
+                        const questionCopy = { ...question }
+
+                        // 确保每个问题有一个唯一ID
+                        if (!questionCopy.id) {
+                            questionCopy.id = `${categoryId}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
+                        }
+
+                        // 确保问题有基本属性
+                        if (!questionCopy.question) {
+                            questionCopy.question = '未知问题'
+                        }
+                        if (!questionCopy.answer) {
+                            questionCopy.answer = '暂无参考答案'
+                        }
+
+                        // 添加分类信息
+                        questionCopy.categoryId = categoryId
+                        questionCopy.categoryName = categoryName
+
+                        questions.push(questionCopy)
+                    })
+                } catch (error) {
+                    console.error(`处理分类 ${categoryName} 时出错:`, error)
+                }
+            }
+        })
+    } catch (error) {
+        console.error('生成随机问题时出错:', error)
+    }
+
+    console.log('生成的随机问题总数:', questions.length)
+
+    if (questions.length === 0) {
+        console.warn('没有生成任何问题，请检查分类和问题数据')
+        ElMessage.warning('没有可用的面试问题，请先在编辑页面添加一些问题')
+    }
 
     // 再次随机打乱所有问题的顺序
     return questions.sort(() => 0.5 - Math.random())
@@ -279,7 +332,14 @@ const startInterview = () => {
 
 // 核心开始面试功能
 const startInterviewCore = () => {
+    console.log('开始模拟面试前状态检查:', {
+        categoriesCount: categories.length,
+        hasQuestions: Object.keys(interviewQuestions).length > 0
+    })
+
     interviewState.questions = generateRandomQuestions()
+    console.log('生成的模拟面试问题:', interviewState.questions)
+
     interviewState.started = true
     interviewState.finished = false
     interviewState.currentQuestionIndex = 0
@@ -303,12 +363,52 @@ const startInterviewCore = () => {
 const submitAnswer = () => {
     if (!currentQuestion.value) return
 
+    // 确保问题有唯一ID
+    if (!currentQuestion.value.id) {
+        currentQuestion.value.id = `question-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
+    }
+
     // 保存答案
     interviewState.answers[currentQuestion.value.id] = currentAnswer.value
 
-    // 评估答案
-    const evaluation = evaluateAnswer(currentQuestion.value.answer, currentAnswer.value)
-    interviewState.evaluations[currentQuestion.value.id] = evaluation
+    try {
+        // 评估答案
+        console.log('评估答案:', {
+            questionId: currentQuestion.value.id,
+            answer: currentAnswer.value.substring(0, 50) + '...',
+            referenceAnswer: currentQuestion.value.answer ? (currentQuestion.value.answer.substring(0, 50) + '...') : '未提供参考答案'
+        })
+
+        // 注意：evaluateAnswer函数的参数顺序是 (参考答案, 用户答案)
+        const evaluation = evaluateAnswer(
+            currentQuestion.value.answer || '参考答案未提供',
+            currentAnswer.value || ''
+        )
+
+        // 确保评估结果有效
+        if (!evaluation || typeof evaluation.score !== 'number') {
+            console.error('评估结果无效:', evaluation)
+            interviewState.evaluations[currentQuestion.value.id] = {
+                score: 60,
+                grade: '一般',
+                feedback: '无法准确评估您的答案，请参考标准答案。',
+                details: []
+            }
+        } else {
+            interviewState.evaluations[currentQuestion.value.id] = evaluation
+        }
+
+        console.log('评估结果:', interviewState.evaluations[currentQuestion.value.id])
+    } catch (error) {
+        console.error('评估答案时出错:', error)
+        // 提供默认评估结果，避免错误影响用户体验
+        interviewState.evaluations[currentQuestion.value.id] = {
+            score: 60,
+            grade: '一般',
+            feedback: '评估过程中遇到错误，请参考标准答案。',
+            details: []
+        }
+    }
 
     // 如果是语音输入，停止监听
     if (interviewState.inputMethod === 'voice' && isListening.value) {
@@ -399,7 +499,14 @@ const formatTime = (seconds) => {
 const totalScore = computed(() => {
     if (Object.keys(interviewState.evaluations).length === 0) return 0
 
-    const scores = Object.values(interviewState.evaluations).map(evaluation => evaluation.score)
+    // 确保每个评估都有有效的分数
+    const scores = Object.values(interviewState.evaluations)
+        .filter(evaluation => evaluation && typeof evaluation.score === 'number' && !isNaN(evaluation.score))
+        .map(evaluation => evaluation.score)
+
+    // 如果没有有效分数，返回0
+    if (scores.length === 0) return 0
+
     return Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length)
 })
 
@@ -507,122 +614,95 @@ onBeforeUnmount(() => {
         </div>
 
         <!-- 进行中状态 -->
-        <div v-else-if="interviewState.started && !interviewState.finished" class="interview-container">
-            <div class="interview-info">
-                <div class="progress-info">
-                    <span>问题 {{ interviewState.currentQuestionIndex + 1 }}/{{ interviewState.questions.length }}</span>
-                    <span>用时: {{ formatTime(interviewState.timeSpent) }}</span>
-                </div>
-                <el-button @click="toggleInputMethod" size="small"
-                    :type="interviewState.inputMethod === 'voice' ? 'success' : 'info'">
-                    <el-icon v-if="interviewState.inputMethod === 'voice'">
-                        <Microphone />
-                    </el-icon>
-                    <el-icon v-else>
-                        <Edit />
-                    </el-icon>
-                    {{ interviewState.inputMethod === 'voice' ? '语音输入中' : '文本输入中' }}
-                </el-button>
+        <div v-else-if="interviewState.started && !interviewState.finished" class="interview-content">
+            <!-- 没有问题时显示提示 -->
+            <div v-if="interviewState.questions.length === 0" class="no-questions-warning">
+                <el-empty description="没有可用的面试问题">
+                    <template #description>
+                        <p>系统未找到任何面试问题，请先添加一些问题后再开始模拟面试。</p>
+                    </template>
+                    <el-button type="primary" @click="goBack">返回首页</el-button>
+                </el-empty>
             </div>
 
-            <div class="question-card" v-if="currentQuestion">
-                <div class="question-category">
-                    <el-tag size="small">{{ currentQuestion.categoryName }}</el-tag>
-                </div>
-                <h3 class="question-title">{{ currentQuestion.question }}</h3>
-
-                <!-- 答题区域 -->
-                <div v-if="!interviewState.showingResult" class="answer-section">
-                    <div v-if="interviewState.inputMethod === 'text'">
-                        <el-input v-model="currentAnswer" type="textarea" :rows="8" placeholder="请输入您的答案..."
-                            class="answer-input" />
+            <!-- 有问题时显示问题内容 -->
+            <div v-else class="question-container">
+                <div class="progress-info">
+                    <div class="progress-text">
+                        问题 {{ interviewState.currentQuestionIndex + 1 }}/{{ interviewState.questions.length }}
                     </div>
-                    <div v-else class="voice-input-container">
-                        <div class="voice-status">
-                            <el-tag :type="isListening ? 'success' : 'info'" effect="dark">
-                                {{ isListening ? '正在录音...' : '未开始录音' }}
-                            </el-tag>
-                            <div class="voice-controls">
-                                <el-button @click="startListening" type="success" size="small" :disabled="isListening">
-                                    开始录音
-                                </el-button>
-                                <el-button @click="stopListening" type="danger" size="small" :disabled="!isListening">
-                                    停止录音
-                                </el-button>
-                            </div>
-                        </div>
-                        <div class="transcript-display">
-                            <p v-if="currentAnswer">{{ currentAnswer }}</p>
-                            <p v-else class="placeholder-text">您的语音将显示在这里...</p>
-                        </div>
-                    </div>
-
-                    <div class="answer-actions">
-                        <el-button @click="resetAnswer" type="warning" size="small">
-                            <el-icon>
-                                <RefreshRight />
-                            </el-icon>
-                            重置答案
-                        </el-button>
-                        <el-button @click="submitAnswer" type="primary" size="small">
-                            <el-icon>
-                                <Check />
-                            </el-icon>
-                            提交答案
-                        </el-button>
+                    <div class="timer">
+                        用时: {{ formatTime(interviewState.timeSpent) }}
                     </div>
                 </div>
 
-                <!-- 评分结果区域 -->
-                <div v-else class="result-section">
-                    <div class="current-result">
-                        <div class="result-header">
-                            <h4>您的答案评分</h4>
-                            <div class="score-display">
-                                <span class="score-value">{{ interviewState.evaluations[currentQuestion.id].score
-                                    }}</span>
-                                <span class="score-grade">({{ interviewState.evaluations[currentQuestion.id].grade
-                                    }})</span>
+                <el-card class="question-card" v-if="currentQuestion">
+                    <template #header>
+                        <div class="question-header">
+                            <div class="category-tag">{{ currentQuestion.categoryName }}</div>
+                            <div class="question-title">{{ currentQuestion.question }}</div>
+                        </div>
+                    </template>
+
+                    <div v-if="!interviewState.showingResult">
+                        <div class="answer-method">
+                            <el-radio-group v-model="interviewState.inputMethod" @change="toggleInputMethod"
+                                :disabled="isListening">
+                                <el-radio label="text">文本输入</el-radio>
+                                <el-radio label="voice">语音输入</el-radio>
+                            </el-radio-group>
+                            <el-tag v-if="isListening" type="success" effect="dark">正在录音...</el-tag>
+                        </div>
+
+                        <div class="answer-input">
+                            <el-input v-model="currentAnswer" type="textarea" :rows="8" placeholder="请输入您的答案..."
+                                :disabled="interviewState.inputMethod === 'voice'" />
+                        </div>
+
+                        <div class="answer-actions">
+                            <el-button type="primary" @click="submitAnswer" :disabled="!currentAnswer.trim()">
+                                提交答案
+                            </el-button>
+                            <el-button @click="resetAnswer">
+                                重置答案
+                            </el-button>
+                        </div>
+                    </div>
+
+                    <div v-else class="result-display">
+                        <h3>回答评估</h3>
+                        <div class="score-display">
+                            <el-progress type="dashboard"
+                                :percentage="interviewState.evaluations[currentQuestion.id]?.score || 0"
+                                :color="(interviewState.evaluations[currentQuestion.id]?.score || 0) >= 60 ? '#67C23A' : '#F56C6C'"
+                                :status="getProgressStatus((interviewState.evaluations[currentQuestion.id]?.score || 0))">
+                                <template #default>
+                                    <div class="score-value">{{ interviewState.evaluations[currentQuestion.id]?.score ||
+                                        0 }}</div>
+                                    <div class="score-label">分</div>
+                                </template>
+                            </el-progress>
+                        </div>
+
+                        <div class="feedback">
+                            <div class="feedback-title">评价:</div>
+                            <div class="feedback-content">{{ interviewState.evaluations[currentQuestion.id]?.feedback ||
+                                '无法评估答案' }}
                             </div>
                         </div>
 
-                        <div class="feedback-section">
-                            <div class="feedback-content">{{ interviewState.evaluations[currentQuestion.id].feedback }}
-                            </div>
+                        <div class="model-answer">
+                            <div class="model-answer-title">参考答案:</div>
+                            <div class="model-answer-content">{{ currentQuestion.answer }}</div>
                         </div>
 
-                        <div class="evaluation-details">
-                            <div v-for="(detail, i) in interviewState.evaluations[currentQuestion.id].details" :key="i"
-                                class="detail-item">
-                                <div class="detail-aspect">{{ detail.aspect }}:</div>
-                                <el-progress :percentage="detail.score" :status="getProgressStatus(detail.score)"
-                                    :stroke-width="10" />
-                                <div class="detail-description">{{ detail.description }}</div>
-                            </div>
-                        </div>
-
-                        <div class="answer-comparison">
-                            <div class="user-answer">
-                                <div class="answer-header">您的回答:</div>
-                                <div class="answer-content">{{ interviewState.answers[currentQuestion.id] }}</div>
-                            </div>
-                            <div class="reference-answer">
-                                <div class="reference-header">参考答案:</div>
-                                <div class="reference-content" v-html="currentQuestion.answer.replace(/\n/g, '<br>')">
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="next-actions">
-                            <el-button @click="continueToNextQuestion" type="primary" size="small">
-                                <el-icon>
-                                    <Right />
-                                </el-icon>
+                        <div class="result-actions">
+                            <el-button type="primary" @click="continueToNextQuestion">
                                 {{ interviewState.currentQuestionIndex < interviewState.questions.length - 1 ? '下一题'
                                     : '完成面试' }} </el-button>
                         </div>
                     </div>
-                </div>
+                </el-card>
             </div>
         </div>
 
@@ -650,44 +730,55 @@ onBeforeUnmount(() => {
                 </div>
 
                 <div class="result-details">
-                    <div v-for="(question, index) in interviewState.questions" :key="question.id" class="result-item">
+                    <div v-for="(question, index) in interviewState.questions" :key="question.id || index"
+                        class="result-item">
                         <div class="result-question">
                             <div class="question-header">
                                 <span class="question-number">问题 {{ index + 1 }}</span>
-                                <el-tag size="small">{{ question.categoryName }}</el-tag>
-                                <span v-if="interviewState.evaluations[question.id]" class="question-score">
-                                    得分: {{ interviewState.evaluations[question.id].score }}
-                                    <span class="question-grade">({{ interviewState.evaluations[question.id].grade
-                                        }})</span>
+                                <el-tag size="small">{{ question.categoryName || '未分类' }}</el-tag>
+                                <span v-if="question.id && interviewState.evaluations[question.id]"
+                                    class="question-score">
+                                    得分: {{ interviewState.evaluations[question.id]?.score || 0 }}
+                                    <span class="question-grade">({{ interviewState.evaluations[question.id]?.grade ||
+                                        '未评分'
+                                    }})</span>
                                 </span>
+                                <span v-else class="question-score">未评分</span>
                             </div>
-                            <div class="question-content">{{ question.question }}</div>
+                            <div class="question-content">{{ question.question || '未知问题' }}</div>
                         </div>
 
                         <div class="result-answer">
                             <div class="answer-header">您的回答:</div>
-                            <div class="answer-content">{{ interviewState.answers[question.id] || '未作答' }}</div>
+                            <div class="answer-content">{{ question.id && interviewState.answers[question.id] || '未作答'
+                            }}</div>
                         </div>
 
                         <div class="result-reference">
                             <div class="reference-header">参考答案:</div>
-                            <div class="reference-content" v-html="question.answer.replace(/\n/g, '<br>')"></div>
+                            <div class="reference-content"
+                                v-html="(question.answer || '未提供参考答案').replace(/\n/g, '<br>')"></div>
                         </div>
 
-                        <div v-if="interviewState.evaluations[question.id]" class="result-evaluation">
+                        <div v-if="question.id && interviewState.evaluations[question.id]" class="result-evaluation">
                             <div class="evaluation-header">评估反馈:</div>
-                            <div class="evaluation-feedback">{{ interviewState.evaluations[question.id].feedback }}
+                            <div class="evaluation-feedback">{{ interviewState.evaluations[question.id]?.feedback ||
+                                '无评估反馈' }}
                             </div>
 
                             <div class="evaluation-details">
-                                <div v-for="(detail, i) in interviewState.evaluations[question.id].details" :key="i"
-                                    class="detail-item">
+                                <div v-for="(detail, i) in interviewState.evaluations[question.id]?.details || []"
+                                    :key="i" class="detail-item">
                                     <div class="detail-aspect">{{ detail.aspect }}:</div>
-                                    <el-progress :percentage="detail.score" :status="getProgressStatus(detail.score)"
-                                        :stroke-width="10" />
-                                    <div class="detail-description">{{ detail.description }}</div>
+                                    <el-progress :percentage="detail.score || 0"
+                                        :status="getProgressStatus(detail.score || 0)" :stroke-width="10" />
+                                    <div class="detail-description">{{ detail.description || '' }}</div>
                                 </div>
                             </div>
+                        </div>
+                        <div v-else class="result-evaluation">
+                            <div class="evaluation-header">评估反馈:</div>
+                            <div class="evaluation-feedback">此题未完成评估</div>
                         </div>
                     </div>
                 </div>
@@ -834,24 +925,31 @@ onBeforeUnmount(() => {
 }
 
 /* 面试进行中样式 */
-.interview-container {
+.interview-content {
     max-width: 800px;
     margin: 0 auto;
 }
 
-.interview-info {
+.question-container {
+    margin-bottom: 20px;
+}
+
+.progress-info {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    margin-bottom: 10px;
     background-color: #f5f7fa;
     padding: 10px 15px;
     border-radius: 6px;
 }
 
-.progress-info {
-    display: flex;
-    gap: 20px;
+.progress-text {
+    font-size: 0.95rem;
+    color: #606266;
+}
+
+.timer {
     font-size: 0.95rem;
     color: #606266;
 }
@@ -864,8 +962,14 @@ onBeforeUnmount(() => {
     margin-bottom: 20px;
 }
 
-.question-category {
-    margin-bottom: 15px;
+.question-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.category-tag {
+    margin-right: 10px;
 }
 
 .question-title {
@@ -875,49 +979,36 @@ onBeforeUnmount(() => {
     line-height: 1.4;
 }
 
-.answer-section {
-    margin-bottom: 25px;
+.answer-method {
+    margin-bottom: 20px;
 }
 
 .answer-input {
-    width: 100%;
-    font-size: 1rem;
-}
-
-.voice-input-container {
-    border: 1px solid #dcdfe6;
-    border-radius: 4px;
-    padding: 15px;
-    min-height: 200px;
-}
-
-.voice-status {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 15px;
-}
-
-.voice-controls {
-    display: flex;
-    gap: 10px;
-}
-
-.transcript-display {
-    min-height: 150px;
-    background-color: #f9f9f9;
-    border-radius: 4px;
-    padding: 15px;
-    font-size: 1rem;
-    line-height: 1.6;
-}
-
-.placeholder-text {
-    color: #909399;
-    font-style: italic;
+    margin-bottom: 20px;
 }
 
 .answer-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.result-display {
+    margin-top: 20px;
+}
+
+.score-display {
+    margin-bottom: 20px;
+}
+
+.feedback {
+    margin-bottom: 20px;
+}
+
+.model-answer {
+    margin-bottom: 20px;
+}
+
+.result-actions {
     display: flex;
     justify-content: flex-end;
 }
