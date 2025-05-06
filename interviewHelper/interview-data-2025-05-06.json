@@ -1,0 +1,1292 @@
+{
+  "categories": [
+    "Redis",
+    "Spring",
+    "Java开发",
+    "MySQL",
+    "MyBatis",
+    "Spring MVC",
+    "Linux",
+    "框架",
+    "多线程",
+    "算法/数据结构",
+    "Spring Boot",
+    "微服务",
+    "设计模式",
+    "JVM",
+    "自我介绍",
+    "项目介绍",
+    "面试冲刺",
+    "IJP 面试",
+    "英文技术面试题",
+    "反问环节",
+    "java 集合",
+    "消息队列"
+  ],
+  "interviewQuestions": {
+    "Redis": [
+      {
+        "question": "redis List 的常见操作命令",
+        "answer": "Redis 的 List 是一个有序可重复的双端链表，支持从两侧插入和弹出元素，常用命令包括 LPUSH、RPUSH、LPOP、RPOP、LRANGE 等，可用于实现队列、栈、消息缓冲区等场景。还支持阻塞操作如 BLPOP 和 BRPOP，用于实现高性能的消息队列。"
+      },
+      {
+        "question": "Redis的数据类型有哪些？",
+        "answer": "Redis支持五种数据类型：\n1. 字符串（String）：可以是字符串、整数或者浮点数\n2. 列表（List）：一个链表，链表上的每个节点都包含了一个字符串\n3. 集合（Set）：包含字符串的无序集合，集合中的元素是唯一的\n4. 哈希表（Hash）：包含键值对的无序散列表\n5. 有序集合（Sorted Set）：类似于集合，但每个元素都关联了一个分数，用于排序"
+      },
+      {
+        "question": "Redis持久化机制有哪些？",
+        "answer": "Redis提供了两种持久化机制：\n1. RDB（Redis Database）：在指定的时间间隔内将内存中的数据集快照写入磁盘。恢复时将快照文件直接读到内存里。\n2. AOF（Append Only File）：记录服务器执行的所有写操作命令，并在服务器启动时，重新执行这些命令来恢复数据。AOF文件比RDB更新频率高，优先级也更高。"
+      },
+      {
+        "question": "Redis如何实现分布式锁？",
+        "answer": "Redis实现分布式锁的基本步骤：\n1. 获取锁：使用SETNX命令设置一个键值对，如果键不存在则设置成功并获取锁\n2. 设置过期时间：使用EXPIRE命令为锁设置一个过期时间，防止客户端崩溃后锁一直无法释放\n3. 释放锁：使用DEL命令删除锁对应的键\n4. 锁续期：使用watchdog机制定期检查并延长锁的过期时间\n\n为了解决更复杂的场景，可以使用Redisson等客户端库，它们提供了更完善的分布式锁实现。"
+      },
+      {
+        "question": "redis 使用场景",
+        "answer": "Redis 常被用于缓存、分布式锁、消息队列、排行榜、限流、Session 共享等场景。它基于内存存储，读写速度极快，支持多种数据结构（如 String、List、Set、ZSet、Hash、GEO 等），适合构建高性能、高并发的分布式系统。\n\n 一、Redis 常见使用场景\n场景类型\t应用说明\t使用的数据结构\n缓存（最常见）\t缓存热点数据，减轻数据库压力\tString、Hash\n分布式锁\t控制分布式系统中的并发访问\tString（+过期时间）\n消息队列\t异步处理任务，解耦系统\tList、Stream\n排行榜/计数器\t实时统计、排名功能（如点赞、浏览量）\tSorted Set、String\nSession 共享\t多服务共享登录状态\tString、Hash\n限流/防刷\t限制请求频率，防止攻击\tString、Lua 脚本\n地理位置服务\t附近的人、定位服务\tGEO\n延迟任务队列\t定时任务、延迟发送\tSorted Set（score 为时间戳）\n全文搜索/倒排索引\t简易搜索功能\tSet、HyperLogLog\n唯一 ID 生成器\t全局唯一递增 ID\tINCR、Lua 脚本\n"
+      },
+      {
+        "question": "为什么这么快",
+        "answer": "Redis 快的本质在于它是内存数据库，所有数据都在内存中读写；同时采用单线程 + 非阻塞 I/O 模型，避免了多线程锁开销。它还使用了高效的数据结构（如跳表、哈希表）、底层 C 语言实现以及零拷贝等优化手段，使得在 10 万 QPS 级别的高并发场景下仍能保持极高性能\n\n✅ 附加知识：Redis 是单线程的，但不是慢\nRedis 的单线程指的是命令处理线程是单线程；\n持久化、异步清理、集群复制等是多线程的；\n单线程配合内存读写 + 高效结构，比多线程数据库还快。\n\n✅ Redis 为什么这么快？逐条分析如下：\n原因\t说明\n1. 基于内存（In-Memory）\t所有数据都存储在内存中，读写速度远高于磁盘\n2. 单线程模型（避免上下文切换）\t核心网络 I/O 和命令处理是单线程，避免了多线程加锁带来的开销\n3. 非阻塞 I/O（Reactor 模式）\t使用 epoll + 事件驱动机制，高效处理高并发请求\n4. 高效的数据结构\t使用最合适的数据结构（如跳表、哈希表、压缩列表），根据场景自动选择编码\n5. 命令执行快（O(1)/O(logN)）\t大部分命令的时间复杂度为 O(1) 或 O(logN)\n6. 紧凑内存管理\t使用 SDS（简单动态字符串）、压缩列表、整数集合等节省内存并提升读写效率\n7. 零拷贝机制\t网络 I/O 使用 writev() 函数进行批量发送，减少拷贝次数\n8. 持久化异步处理\tAOF/RDB 持久化通过后台线程完成，不阻塞主线程\n9. 支持管道（Pipeline）\t客户端可一次发送多条命令，减少网络 RTT 时间\n10. 精简逻辑（C语言编写）\tRedis 是纯 C 实现，代码紧凑，性能极致优化\n\n"
+      },
+      {
+        "question": "为什么Redis 设计为单线程？6.0后为什么引入多线程",
+        "answer": "Redis 最初采用单线程模型，是因为基于内存的数据操作非常快，使用单线程可以避免多线程带来的锁竞争和上下文切换，提高性能和稳定性。而在 Redis 6.0 之后，为了解决大量连接带来的网络 I/O 压力，加入了 I/O 多线程，用于并发处理请求接收和响应发送，但命令执行仍然保持单线程，从而兼顾了性能与线程安全。\n\n\nRedis 最初设计为单线程是为了简洁、高效、无锁竞争；\n从 6.0 开始，引入了I/O 多线程，进一步提升网络读写性能，但命令执行逻辑仍保持单线程，以确保线程安全和简洁性。"
+      },
+      {
+        "question": "redis 支持事务吗？如何实现",
+        "answer": "Redis 支持事务机制，使用 MULTI 开启事务，EXEC 提交事务，DISCARD 放弃事务，WATCH 实现乐观锁机制。事务中的命令会被顺序执行，具备一定的原子性，但不支持中途失败的回滚。相比传统数据库事务，Redis 更轻量，适合在数据一致性要求不高的高性能场景中使用。"
+      },
+      {
+        "question": "集群实现原理",
+        "answer": "Redis 集群通过将 key 空间划分为 16384 个槽位，并将这些槽位分配给多个主节点，实现了数据自动分片。每个主节点配有从节点，实现主从复制和高可用。节点间使用 Gossip 协议通信，支持故障转移和请求重定向。相比单机或哨兵模式，集群具备更强的扩展性和容错能力，是 Redis 在分布式场景中的核心解决方案。\n\n 七、附加知识点（可选加分）\n集群最少需要 6 个节点（3 主 3 从）才能保证高可用\nRedis集群不支持跨槽事务（用 hash tags 可解决）\nRedis集群支持 resharding 动态迁移槽位"
+      },
+      {
+        "question": "redis 主从复制的原理？",
+        "answer": "Redis 主从复制是实现高可用和读扩展的重要机制。从节点通过 PSYNC 命令连接主节点，进行全量或增量复制。复制过程包括主节点发送 RDB 快照和缓冲区命令，从节点加载并持续同步。Redis 默认采用异步复制，但可通过 WAIT 实现半同步。主从结构支持断线重连、读写分离，也是哨兵模式和集群架构的基础。\n\n"
+      },
+      {
+        "question": "redis 的哨兵机制是什么",
+        "answer": "Redis 哨兵机制是一种高可用解决方案，通过监控主从节点状态，在主节点故障时自动完成主从切换，并通知客户端更新连接。哨兵节点相互通信，通过投票选举完成自动故障转移，是 Redis 保证服务不中断的关键机制之一。相比集群模式，哨兵适用于中小规模、对分片要求不高的场景。"
+      },
+      {
+        "question": "redis 如何实现分布式锁",
+        "answer": "Redis 实现分布式锁的核心是使用 SET key value NX PX 命令，保证只有一个客户端能加锁，并设置过期时间避免死锁。解锁时通过 Lua 脚本实现原子性比较后删除，防止误删他人锁。在分布式环境下可使用 Redis 作者提出的 Redlock 算法，在多个 Redis 实例中加锁，以提高可靠性和容错性。\n\n✅ 七、常见问题及优化建议\n问题\t建议\n锁超时未释放\t设置合理过期时间，或使用 watchdog 自动续期机制\n锁被误删\t使用唯一 value + Lua 脚本验证释放\n单点 Redis 崩溃\t使用 Redlock、哨兵或集群模式\n不支持可重入\t自行实现线程 ID + 计数器方案\n锁粒度不合理\t锁粒度不要过粗，避免性能瓶颈"
+      },
+      {
+        "question": "redis 中的缓存击穿、缓存穿透和缓存雪崩",
+        "answer": "Redis 缓存问题主要包括穿透、击穿和雪崩三种：\n\n缓存穿透是指请求的数据缓存和数据库都不存在，可通过缓存空值或布隆过滤器解决；\n缓存击穿是热点 key 失效导致瞬间大量请求打到数据库，可通过互斥锁、设置永不过期等方式解决；\n缓存雪崩是大量 key 同时过期造成系统雪崩，可通过设置随机过期时间、缓存预热等方法缓解。\n\n"
+      },
+      {
+        "question": "redis如何保证缓存和数据库的数据一致性",
+        "answer": " 一、为什么会出现缓存与数据库不一致？\n常见操作顺序问题：\n先更新数据库，再删除缓存（推荐做法）\n先删除缓存，再更新数据库\n读写并发导致缓存“脏数据”\n\n三、推荐做法：先更新数据库，再删除缓存\n这是最稳妥的方式，符合“先发后消费”的一致性思想。\n优点：\n删除缓存失败时，可通过延时任务或重试机制补偿\n缓存更新延迟短暂，不易出现脏数据\n❗ 问题：并发读脏数据\n读线程在【删除缓存 → 更新数据库】之间读取到了旧数据\n\n✅ 解决方案：\n方法\t描述\n延迟双删\t删除两次缓存：更新数据库前后各一次（第二次延迟几百毫秒）\n加分布式锁\t保证一个线程写入时，其他线程不能并发读取\n异步队列补偿\t监听更新操作，异步触发缓存刷新\n利用消息队列\t更新数据库后发送消息通知缓存更新\n\n"
+      }
+    ],
+    "Spring": [
+      {
+        "question": "什么是AOP ？有什么场景?",
+        "answer": "AOP（面向切面编程）是一种将横切关注点（如日志、权限、事务）从业务逻辑中分离出来的编程方式。在 Spring 中，AOP 通过动态代理实现，常见的通知类型包括前置通知、后置通知、异常通知等。通过 AOP，我们可以使业务代码更清晰、可维护、可重用，常用于日志记录、事务管理、安全控制等场景。"
+      },
+      {
+        "question": "什么是Spring Bean",
+        "answer": "在 Spring 中，Bean 是一个被 Spring 容器管理的普通 Java 对象。Spring Bean 的创建、依赖注入、生命周期等均由容器控制。我们可以通过注解（如 @Component）、Java 配置（@Bean）或 XML 配置方式来定义 Bean。Spring Bean 默认是单例的，也支持多种作用域。它是实现 Spring IOC 和 DI 的核心载体。\n\n-追问-\nSpring Bean 默认是单例还是多例？\t默认是单例（singleton）\nBean 有哪些创建方式？\t注解、Java 配置、XML\nBean 的生命周期有哪些阶段？\t实例化、注入、初始化、销毁\n如何实现 Bean 的初始化方法？\t@PostConstruct，InitializingBean，init-method 等"
+      },
+      {
+        "question": "Spring框架的核心模块有哪些？",
+        "answer": "Spring框架的核心模块包括：\n1. Spring Core：提供了框架的基础功能，包含IoC和DI功能\n2. Spring AOP：提供了面向切面编程的实现\n3. Spring MVC：提供了Web应用程序的MVC实现\n4. Spring ORM：提供了对ORM框架的整合支持\n5. Spring DAO：提供了对JDBC的抽象层\n6. Spring Context：提供了框架式的Bean访问方式，以及企业级功能（如JNDI、定时任务等）"
+      },
+      {
+        "question": "spring ioc 容器初始化过程",
+        "answer": "Spring IOC 容器的初始化过程包括：加载配置、创建容器、解析并注册 BeanDefinition，然后实例化非懒加载单例 Bean，完成依赖注入和生命周期回调。最终容器就绪，所有 Bean 可被使用。\n\n--追问--\nBean 是什么时候创建的？\t默认是 IOC 容器初始化时创建（单例 + 非懒加载）\nBean 是如何注入依赖的？\t通过构造器、Setter、字段注入\nBean 生命周期有哪些？\t实例化 → 注入依赖 → 初始化 → 销毁\nBeanDefinition 是什么？\tBean 的元信息对象（类名、作用域、依赖等）"
+      },
+      {
+        "question": "什么是Spring IOC和DI？",
+        "answer": "IoC（Inversion of Control，控制反转）是一种设计原则，它将传统上由程序代码直接操控的对象的调用权交给了Spring容器，通过容器来实现对象组件的装配和管理。\n\nDI（Dependency Injection，依赖注入）是IoC的一种实现方式，它是指在Spring容器创建Bean对象时，动态地将其依赖对象注入到Bean中。\n\n两者的关系是：IoC是一种思想，DI是IoC的具体实现方式。Spring通过DI实现了IoC，使得对象的创建和依赖关系的管理从代码中脱离出来，由Spring容器统一管理。\n\n通过控制反转和依赖注入管理对象的创建与生命周期。它使代码更灵活、可测试，并集中配置。\n\nSpring IOC 是一种控制反转思想，它将对象的创建和依赖关系交给容器管理，从而实现程序的解耦。DI 是实现 IOC 的一种方式，常见的有构造器注入、Setter 注入、字段注入等。使用 IOC/DI 的好处包括解耦、灵活、可测试、可维护。在实际开发中，Spring 框架通过 IOC 容器帮助我们管理整个应用的依赖关系，是企业级开发中不可或缺的核心机制。"
+      },
+      {
+        "question": "Spring IoC容器的核心作用是什么？BeanFactory和ApplicationContext的区别？",
+        "answer": "Spring IoC容器的核心作用是解耦组件依赖，通过控制反转和依赖注入管理对象的创建与生命周期。它使代码更灵活、可测试，并集中配置。\n\nBeanFactory和ApplicationContext的区别：\n\nBeanFactory是基础IoC容器，提供延迟加载和核心功能，适合资源受限场景；\nApplicationContext是其扩展，支持事件、国际化等企业级功能，且默认预加载单例Bean，启动更快。\n实际开发中，ApplicationContext是首选，除非需要精细控制资源。\n\n\n为什么ApplicationContext更常用？\n因其预加载特性避免了运行时延迟，且内置企业级功能（如与Spring MVC、事务管理无缝集成）。\n何时用BeanFactory？\n仅在内存极度受限时（如嵌入式系统），但现代应用几乎都用ApplicationContext。\nApplicationContext如何扩展功能？\n通过继承BeanFactory并添加接口（如ResourceLoader、ApplicationEventPublisher）实现。"
+      },
+      {
+        "question": "Spring中Bean的作用域有哪些？Singleton和Prototype在实际场景中的应用差异。",
+        "answer": "Bean的作用域包括Singleton（默认）、Prototype、Request、Session等，用于控制Bean的创建方式和生命周期。\n\nSingleton和Prototype的差异：\n\nSingleton全局共享一个实例，适合无状态服务；\nPrototype每次生成新实例，适合有状态或资源隔离场景。\n\n实际应用：\n\n\n例如用户认证服务（Singleton）复用无状态逻辑；\n订单处理器（Prototype）隔离每个订单的处理状态。\n\n常见追问点\n如何选择作用域？\n优先用Singleton（性能高），仅在需要状态隔离时用Prototype。\nPrototype Bean的销毁问题？\n需通过@PreDestroy自定义销毁逻辑，或使用ObjectFactory/Provider延迟获取实例。\n线程安全问题如何解决？\nSingleton中避免成员变量，或用ThreadLocal隔离；Prototype天然线程安全。"
+      },
+      {
+        "question": "详细描述Spring Bean的生命周期（从创建到销毁的完整流程）。",
+        "answer": "Spring Bean 的生命周期从实例化开始，接着进行属性注入和Aware接口回调。之后BeanPostProcessor的前置处理会执行@PostConstruct等方法，随后初始化回调。最后，通过BeanPostProcessor的后置处理完成代理增强，Bean可以使用。销毁阶段会处理@PreDestroy和自定义销毁逻辑。"
+      },
+      {
+        "question": "如何解决Spring中的循环依赖问题？三级缓存机制的原理是什么？",
+        "answer": "Spring通过三级缓存解决单例Bean的Setter注入循环依赖：\n\nsingletonFactories存放Bean工厂，用于提前暴露半成品对象的引用；\nearlySingletonObjects缓存已实例化但未初始化的Bean，避免重复创建；\nsingletonObjects存储完全初始化的Bean。\n\n当A依赖B且B依赖A时，Spring在创建A的半成品后，将其工厂放入三级缓存。创建B时，通过工厂获取A的早期引用完成注入，最终闭环解决依赖。\n\n*注意事项\n构造函数循环依赖无解：必须通过代码设计避免（如改用Setter注入）。\n原型（Prototype）作用域不支持：每次请求新实例，无法缓存半成品。\n复杂循环依赖需谨慎：虽然Spring能解决Setter注入的循环依赖，但过度使用会导致代码耦合度高，难以维护。"
+      },
+      {
+        "question": "@Autowired和@Resource注解的区别？如何按名称或类型注入Bean？",
+        "answer": "@Autowired 和 @Resource 的区别：\n\n\n来源不同：@Autowired 是Spring的注解，@Resource 是Java标准注解。\n默认注入策略：@Autowired 按类型匹配，@Resource 按名称匹配。\n名称指定方式：@Autowired 需配合 @Qualifier，@Resource 可直接通过 name 属性。\n构造函数支持：@Autowired 支持构造函数注入，@Resource 仅支持字段和Setter方法。\n\n按名称/类型注入的实现：\n\n\n按类型：@Autowired 默认行为，或 @Resource(type=...)。\n按名称：@Autowired + @Qualifier(\"name\") 或 @Resource(name=\"name\")。"
+      },
+      {
+        "question": "FactoryBean的作用是什么？举例说明其使用场景",
+        "answer": "FactoryBean 的作用：\n它是 Spring 中一种特殊的 Bean，用于封装复杂对象的创建过程。通过实现 getObject() 方法返回实际对象，常见于连接池、代理对象、第三方库集成等场景。\n\n\n使用场景举例：\n\n\n创建需要复杂配置的 Redis/JDBC 连接对象；\n动态生成 AOP 代理对象；\n集成 MyBatis 的 SqlSessionFactoryBean（实际生产中的经典案例）。\n\n注意事项：\n\n\n通过 applicationContext.getBean(\"factoryBeanName\") 获取的是 getObject() 返回的对象；\n若需获取 FactoryBean 本身，需使用 getBean(\"&factoryBeanName\")（添加 & 前缀）。\n\n常见追问\nFactoryBean 和普通 Bean 的区别？\n普通 Bean 直接由容器实例化，而 FactoryBean 是间接创建其他对象的工厂。\nSpring 内置的 FactoryBean 有哪些？\n例如 SqlSessionFactoryBean（MyBatis）、ProxyFactoryBean（AOP）、Jackson2ObjectMapperFactoryBean（JSON 序列化）等。\nFactoryBean 如何实现单例控制？\n通过 isSingleton() 方法返回 true/false 决定对象是否单例。"
+      },
+      {
+        "question": "Spring AOP的底层实现原理？JDK动态代理和CGLIB代理的区别及适用场景。",
+        "answer": "Spring AOP 的实现原理：\nSpring AOP 通过动态代理在运行时生成代理对象，拦截目标方法的执行，并织入切面逻辑（如事务、日志）。代理方式的选择取决于目标类是否实现接口：\n\n若目标类实现接口，默认使用 JDK 动态代理。\n若目标类未实现接口，使用 CGLIB 代理（可通过配置强制使用 CGLIB）。\n\nJDK 动态代理与 CGLIB 的区别：\n\n\n实现机制：JDK 代理基于接口反射，CGLIB 基于继承生成子类。\n适用场景：JDK 代理要求目标类有接口，CGLIB 可代理无接口的类。\n性能：CGLIB 代理的生成和调用效率略高，但首次加载较慢。\n\n实际应用：\n\n优先使用 JDK 动态代理（符合面向接口编程原则）。\n对无接口的类或需要代理 final 以外的方法时，选择 CGLIB。"
+      },
+      {
+        "question": "解释AOP中的JoinPoint、Advice、Pointcut、Aspect概念。",
+        "answer": "AOP 的核心概念包括：\n\nJoinPoint：程序执行的具体位置（如方法调用）。\nAdvice：在连接点执行的逻辑（如日志记录）。\nPointcut：通过表达式匹配需要拦截的连接点（如 service 包下的所有方法）。\nAspect：将 Pointcut 和 Advice 组合成一个模块化单元（如事务管理切面）。\n\n例如，可以通过一个日志切面（Aspect），在 UserService 的所有方法（Pointcut）执行前打印日志（Advice）。"
+      },
+      {
+        "question": "如何在同一切面中定义多个Advice的执行顺序？",
+        "answer": "在同一切面中定义多个 Advice 的执行顺序有两种方式：\n\n\n使用 @Order 注解：在方法级别指定优先级，数值越小越先执行。\n依赖方法声明顺序：未指定 @Order 时，同类型 Advice 按方法名字母顺序执行。\n\n示例：\n若两个 @Before 通知都拦截同一方法，可通过 @Order(1) 和 @Order(2) 明确它们的执行顺序。"
+      },
+      {
+        "question": "Spring AOP与AspectJ的区别是什么？",
+        "answer": "Spring AOP 和 AspectJ 的区别：\n\n\n实现机制：Spring AOP 基于动态代理（运行时增强），AspectJ 通过字节码操作（编译时/类加载时增强）。\n功能范围：Spring AOP 仅支持方法级别的切面，AspectJ 支持字段、构造方法等所有连接点。\n性能：AspectJ 性能更高（直接修改字节码），Spring AOP 适合轻量级场景。\n适用场景：\nSpring AOP：事务管理、简单日志等基于方法的切面。\nAspectJ：需要拦截字段或静态代码块的复杂切面（如性能监控）。\n\n常见追问点\n如何选择？\n优先用 Spring AOP：对性能不敏感且功能足够时。\n选择 AspectJ：需要更细粒度的控制或更高性能时。\nSpring AOP 是否依赖 AspectJ？\nSpring AOP 使用 AspectJ 的注解（如 @Aspect），但未使用其编译器/织入器。\n如何集成 AspectJ 到 Spring？\n通过 @EnableLoadTimeWeaving 启用类加载期织入，或配置编译时织入插件。"
+      },
+      {
+        "question": "Spring事务管理的两种方式（编程式、声明式）及优缺点。",
+        "answer": "Spring的事务管理通过PlatformTransactionManager统一管理不同数据源，支持声明式和编程式两种方式。声明式事务通过@Transactional注解实现非入侵式管理，核心流程包括代理拦截、事务开启/提交、异常回滚，依赖ThreadLocal绑定资源，适合大多数场景；编程式事务则通过TransactionTemplate或直接使用事务管理器，更适合需要精细控制的复杂逻辑。两者主要区别在于配置方式、灵活性和代码入侵性。"
+      },
+      {
+        "question": "Spring事务的传播行为（Propagation）有哪些？举例说明REQUIRED和REQUIRES_NEW的区别。",
+        "answer": "Spring 事务的传播行为 定义了多个事务方法相互调用时的处理规则，主要包括 7 种类型：\n\n\nREQUIRED（默认）：共享事务，异常导致全局回滚。\nREQUIRES_NEW：独立事务，异常仅影响自身。\n其他如 SUPPORTS、MANDATORY 等根据是否需要事务灵活选择。\n\nREQUIRED 和 REQUIRES_NEW 的区别：\n\n\n事务边界：REQUIRED 内外层共享事务，REQUIRES_NEW 内层始终新建事务。\n回滚影响：REQUIRED 内层异常导致外层回滚，REQUIRES_NEW 内层回滚不影响外层。\n\n示例：\n日志记录（REQUIRES_NEW）即使失败，也不影响订单提交（REQUIRED）。"
+      },
+      {
+        "question": "Spring事务的隔离级别（Isolation）与数据库隔离级别的关系？",
+        "answer": "Spring 事务隔离级别与数据库的关系：\n\n\n抽象与实现：Spring 的隔离级别（如 READ_COMMITTED）是对数据库隔离级别的封装，最终由数据库实现。\n配置映射：通过 @Transactional(isolation = Isolation.XXX) 指定级别，Spring 会将其转换为数据库对应的隔离指令（如 SET TRANSACTION ISOLATION LEVEL）。\n默认行为：若未指定，Spring 使用 Isolation.DEFAULT，即数据库的默认隔离级别（如 MySQL 默认为 REPEATABLE_READ）。\n\n示例：\n当 Spring 配置为 Isolation.READ_COMMITTED 时，底层数据库会启用 READ COMMITTED 模式，解决脏读问题，但允许不可重复读和幻读。\n\n 常见追问点\nSpring 如何传递隔离级别给数据库？\n通过 JDBC 的 Connection.setTransactionIsolation() 方法设置。\n所有数据库都支持 Spring 的隔离级别吗？\n否，例如 Oracle 不支持 READ_UNCOMMITTED，MySQL 的 REPEATABLE_READ 通过 MVCC 解决了部分幻读。\n如何选择隔离级别？\n根据业务对数据一致性的要求，权衡性能与准确性（如金融系统常用 SERIALIZABLE，高并发读场景用 READ_COMMITTED）。"
+      },
+      {
+        "question": "@Transactional注解失效的常见原因有哪些？",
+        "answer": "Spring事务失效的常见场景有：\n1.自调用问题：同类中非事务方法直接调用事务方法，需通过代理对象调用。\n2.非public方法：事务代理基于AOP实现，非public方法无法生成代理。\n3.异常被吞没：默认只回滚RuntimeException和Error，若捕获其他异常需显示配置rollbackFor\n4.数据库引擎不支持：比如MyISAM引擎\n5.多数据源未指定事务管理器。\n实际项目中，曾因自调用导致事务失效，通过注入代理对象解决。\n"
+      },
+      {
+        "question": "Spring框架中使用了哪些设计模式？举例说明。",
+        "answer": "Spring 框架中使用的设计模式：\n\n\n工厂模式：通过 BeanFactory 和 ApplicationContext 创建和管理 Bean。\n单例模式：Bean 的默认作用域，确保全局唯一实例。\n代理模式：AOP 使用动态代理实现方法增强（如事务管理）。\n模板方法模式：JdbcTemplate 封装数据库操作通用流程。\n观察者模式：事件发布-订阅机制（如 ApplicationEvent）。\n适配器模式：HandlerAdapter 统一处理不同类型的控制器。\n\n示例：\nSpring AOP 的 @Transactional 注解通过代理对象添加事务管理，是代理模式的典型应用。"
+      },
+      {
+        "question": "Spring事件驱动模型的实现原理？如何自定义事件？",
+        "answer": "Spring 事件驱动模型的实现原理：\n基于观察者模式，包含事件、发布者和监听者。当发布者发布事件时，容器会通知所有匹配的监听者执行逻辑。\n\n\n自定义事件的步骤：\n\n\n定义事件类：继承 ApplicationEvent，封装事件数据。\n发布事件：通过 ApplicationEventPublisher 发布自定义事件。\n监听事件：使用 @EventListener 注解或实现 ApplicationListener 接口处理事件。\n\n示例：\n订单创建后发布 OrderCreatedEvent，监听者可以发送通知或更新库存。\n\n 常见追问点\n如何保证监听者执行顺序？\n使用 @Order 注解或在监听器类中实现 Ordered 接口。\n事件处理是否支持异步？\n是的，通过 @Async 注解实现异步处理。\n事件传播范围：\n默认基于 ApplicationContext 层级传播，可通过 @TransactionalEventListener 绑定事务阶段"
+      },
+      {
+        "question": "BeanFactoryPostProcessor和BeanPostProcessor的区别是什么？",
+        "answer": "BeanFactoryPostProcessor 和 BeanPostProcessor 的区别：\n\n\n作用目标：\nBeanFactoryPostProcessor 操作 Bean 的元数据（BeanDefinition）。\nBeanPostProcessor 操作 Bean 的实例。\n执行时机：\nBeanFactoryPostProcessor 在 Bean 实例化前执行。\nBeanPostProcessor 在 Bean 实例化后、初始化前后执行。\n应用场景：\nBeanFactoryPostProcessor 用于动态修改 Bean 定义（如调整作用域）。\nBeanPostProcessor 用于增强 Bean 实例（如生成 AOP 代理）。\n\n示例：\nSpring 的 PropertySourcesPlaceholderConfigurer（解析 ${} 占位符）是 BeanFactoryPostProcessor 的典型实现；\nAnnotationAwareAspectJAutoProxyCreator（生成 AOP 代理）是 BeanPostProcessor 的典型实现。\n\n4. 常见追问点\n执行顺序：\n多个 BeanFactoryPostProcessor 可以通过 Ordered 接口或 @Order 注解控制顺序。\n多个 BeanPostProcessor 同样支持顺序控制。\n如何注册 Processor？\nBeanFactoryPostProcessor 需要手动注册（如通过 @Bean）。\nBeanPostProcessor 可以通过 @Component 自动扫描注册。"
+      },
+      {
+        "question": "Spring如何整合JDBC？JdbcTemplate如何避免资源泄漏？",
+        "answer": "Spring 整合 JDBC 的步骤：\n\n\n配置数据源（如连接池）。\n注入数据源到 JdbcTemplate。\n通过 JdbcTemplate 执行 SQL，无需手动处理连接和异常。\n\nJdbcTemplate 如何避免资源泄漏：\n\n\n自动释放资源：在内部通过 try-finally 或 try-with-resources 确保连接、语句、结果集关闭。\n回调机制：将资源管理逻辑封装在模板方法中，用户只需关注业务代码。\n事务支持：通过事务管理器确保连接生命周期与事务一致。\n\n示例：\n调用 jdbcTemplate.query() 时，Spring 会自动处理 Connection 的获取和释放，开发者无需编写 finally 块。\n\n3. 加分点\n扩展性：可通过 RowMapper 或 ResultSetExtractor 自定义结果集映射。\n批处理支持：batchUpdate() 方法优化批量操作性能。\n异常转换：将 SQLException 转换为更具可读性的 DataAccessException 子类。"
+      },
+      {
+        "question": "如果一个Bean同时被@Component和@Bean注解定义，会发生什么？",
+        "answer": "如果一个Bean同时被@Component和@Bean注解定义，会发生什么？"
+      },
+      {
+        "question": "如何在Spring中动态注册一个Bean？",
+        "answer": "如何在 Spring 中动态注册 Bean：\n\n\n基于 BeanDefinitionRegistry：直接操作 Bean 定义的注册表，适用于需要精细化控制的场景。\n通过 ApplicationContext：利用 ConfigurableApplicationContext 的 BeanFactory 注册单例 Bean。\n使用 BeanFactoryPostProcessor：在容器初始化阶段修改 Bean 定义。\n结合 ImportBeanDefinitionRegistrar：通过 @Import 注解动态导入 Bean。\n\n示例：\n在需要动态注册第三方库的 Bean 时，可以通过 BeanDefinitionRegistry 手动注册其定义，确保容器管理其生命周期。\n\n5. 注意事项\n作用域管理：动态注册的 Bean 默认是单例，需显式设置作用域。\n依赖注入：动态 Bean 的依赖需手动处理（如通过 @Autowired 注解处理器）"
+      },
+      {
+        "question": "为什么@Autowired注入的Bean有时会报NoSuchBeanDefinitionException？列举可能原因。",
+        "answer": "@Autowired 注入报 NoSuchBeanDefinitionException 的可能原因：\n\n\nBean 未注册：目标类未添加 @Component 等注解，或包路径未被 @ComponentScan 扫描。\n条件不满足：Bean 的注册依赖 @Profile 或 @Conditional，但当前环境不符合条件。\n依赖歧义：存在多个同类型的 Bean，未用 @Qualifier 指定名称。\n作用域问题：非单例 Bean 未正确配置作用域代理。\n循环依赖：构造函数注入导致的循环依赖未正确处理。\n\n解决思路：\n\n\n检查 Bean 的注解和包扫描配置。\n使用 @Qualifier 消除歧义。\n验证条件注解和环境配置。\n对循环依赖使用 @Lazy 或 Setter 注入。\n加分点\n调试工具：\n通过 applicationContext.getBeanDefinitionNames() 查看所有已注册的 Bean。\n日志分析：\n启用 Spring 的调试日志（logging.level.org.springframework=DEBUG），观察 Bean 的注册流程。\n自动配置排除：\n使用 @SpringBootApplication(exclude = {某些自动配置类}) 排查自动配置冲突"
+      },
+      {
+        "question": "如果一个Bean的初始化方法（@PostConstruct）抛出异常，Spring会如何处理？",
+        "answer": "当 @PostConstruct 方法抛出异常时，Spring 的处理流程：\n\n\n中断初始化：Bean 的创建过程立即终止，容器不会注册该 Bean。\n抛出 BeanCreationException：异常信息会包含原始错误原因（如 RuntimeException）。\n清理资源：Spring 会释放已分配的资源（如注入的依赖），但不会调用 @PreDestroy 方法。\n容器状态：\n单例 Bean 的初始化失败会导致容器启动失败。\n原型 Bean 的失败仅影响当前实例，不影响容器和其他 Bean。\n\n影响范围：\n如果该 Bean 是其他 Bean 的依赖项，依赖它的 Bean 也会因无法注入而创建失败。\n\n加分点\n事务管理：\n如果 @PostConstruct 方法涉及事务，需注意事务的传播行为（默认不生效，需手动配置）。\n调试建议：\n通过 BeanPostProcessor 或监听 ContextRefreshedEvent 分离初始化逻辑，降低耦合风险。\n替代方案：\n使用 InitializingBean 接口的 afterPropertiesSet() 方法，其异常处理机制与 @PostConstruct 一致。"
+      },
+      {
+        "question": "Spring的单例Bean是线程安全的吗？如何保证线程安全？",
+        "answer": "Spring 单例 Bean 的线程安全性：\n默认情况下，单例 Bean 不是线程安全的，因为所有线程共享同一实例的成员变量。若 Bean 包含可变状态（如计数器），并发访问会导致数据不一致。\n\n\n如何保证线程安全：\n\n\n无状态设计：避免成员变量，仅使用方法参数和局部变量。\n同步机制：使用 synchronized 或显式锁控制并发。\n线程安全类：如 AtomicInteger、ConcurrentHashMap。\nThreadLocal：将状态隔离到线程级别。\n原型作用域：改用 prototype 作用域（需权衡性能）。\n\n最佳实践：优先通过无状态设计或线程安全类解决问题，减少锁的开销。\n\n加分点\n性能权衡：同步机制可能导致性能下降，需根据场景选择合适方案。\nSpring 的线程安全工具：\n@Scope(value = \"request\")：在 Web 应用中为每个请求生成新实例。\n@Async：异步方法默认生成代理，避免共享资源竞争。"
+      },
+      {
+        "question": "如果一个接口有多个实现类，Spring会如何注入？如何按条件选择具体实现？",
+        "answer": "当接口有多个实现类时，Spring 会因无法确定唯一 Bean 抛出 NoUniqueBeanDefinitionException。解决方法包括：\n\n\n@Qualifier 指定名称：明确注入特定 Bean。\n@Primary 标记默认实现：优先注入标记为 @Primary 的 Bean。\n条件化选择：\n使用 @Profile 按环境激活实现（如生产环境用信用卡支付，开发环境用支付宝）。\n通过 @Conditional 自定义条件（如根据配置开关动态选择）。\n@Resource 按名称注入：直接指定 Bean 名称。\n\n示例：\n在支付场景中，可以通过 @Profile(\"prod\") 和 @Profile(\"dev\") 分别标记信用卡和支付宝实现，根据运行环境动态切换。"
+      },
+      {
+        "question": "Spring如何实现配置信息（如数据库连接）的热更新？",
+        "answer": "Spring 实现配置热更新的方式：\n\n\n@RefreshScope + 配置中心：\n结合 Spring Cloud Config 或 Nacos，通过 @RefreshScope 注解标记 Bean，调用 /actuator/refresh 端点触发刷新。\n监听 EnvironmentChangeEvent：\n捕获配置变更事件，手动更新相关组件。\nConfigurationProperties 动态绑定：\n使用 ContextRefresher 刷新配置类。\n自定义方案：\n从数据库或消息中间件定时拉取配置并更新。\n\n最佳实践：\n\n\n对于微服务架构，推荐 @RefreshScope + 配置中心的方案。\n单体应用可通过 EnvironmentChangeEvent 或自定义定时任务实现。\n4. 加分点\nSpring Cloud Bus：\n通过消息队列（如 RabbitMQ）批量刷新多个实例的配置。\n配置中心对比：\nSpring Cloud Config、Nacos、Apollo 等工具的适用场景。\n注意事项：\n热更新可能引发线程安全问题，需确保配置变更后状态一致性。\n\n在使用 @RefreshScope + 配置中心实现热更新时，确实需要关注配置变更带来的线程安全和状态一致性问题。我的做法主要有三点：**第一，保证 @RefreshScope 下的 Bean 尽量无状态，不存储任何业务缓存或长生命周期资源；第二，对于需要变更的复杂配置，采用不可变对象 + 原子引用整体替换，确保业务线程获取到的一定是同一份配置；第三，像连接池、缓存等重资源单独管理，刷新时采用新旧切换，避免并发冲突。通过这些方式，能够有效规避配置热更新带来的线程安全和状态不一致风险。"
+      },
+      {
+        "question": "Spring如何整合第三方框架（如MyBatis）？核心步骤是什么？",
+        "answer": "Spring 整合第三方框架的核心步骤：\n\n\n添加依赖：引入 Spring 和第三方框架的库（如 MyBatis Starter）。\n配置数据源：定义数据库连接信息。\n注册框架组件：通过 @Bean 或自动配置初始化核心对象（如 SqlSessionFactory）。\n定义业务组件：编写框架相关的代码（如 Mapper 接口）。\n启用自动扫描：使用 @MapperScan 或 XML 配置扫描路径。\n\n以 MyBatis 为例：\n\n\n通过 mybatis-spring-boot-starter 简化配置。\n使用 @Mapper 或 @MapperScan 自动注册 Mapper 接口。\n自动注入 SqlSessionTemplate 执行 SQL。\n3. 加分点\n事务管理：\n结合 @Transactional 注解管理数据库事务。\n多数据源配置：\n通过 @Primary 和 @Qualifier 支持多数据源。\n性能优化：\n配置连接池（如 HikariCP）、二级缓存等。"
+      }
+    ],
+    "Java开发": [
+      {
+        "question": "java 的基本类型有哪些",
+        "answer": "Java 一共提供了 8 种基本数据类型，分别是整数类型（byte, short, int, long）、浮点类型（float, double）、字符类型（char）和布尔类型（boolean）。它们不是对象，性能高、内存占用小，常用于数值计算和控制逻辑。每种基本类型在 Java 中都有对应的包装类，用于泛型、集合等场景。\n\n类型\t关键字\t占用内存\t默认值\t范围（近似值）\t示例值\n整数型\t\t\t\t\t\n字节型\tbyte\t1 字节\t0\t-128 到 127\tbyte b = 10;\n短整型\tshort\t2 字节\t0\t-32,768 到 32,767\tshort s = 1000;\n整型\tint\t4 字节\t0\t-2³¹ 到 2³¹-1\tint i = 100000;\n长整型\tlong\t8 字节\t0L\t-2⁶³ 到 2⁶³-1\tlong l = 10000000000L;\n浮点型\t\t\t\t\t\n单精度浮点\tfloat\t4 字节\t0.0f\t约 ±3.4e38（7 位精度）\tfloat f = 3.14f;\n双精度浮点\tdouble\t8 字节\t0.0d\t约 ±1.7e308（15 位精度）\tdouble d = 3.14159;\n字符型\tchar\t2 字节\t'\\u0000'\t单个 Unicode 字符（0~65535）\tchar c = 'A';\n布尔型\tboolean\t1 位（虚拟机决定）\tfalse\ttrue 或 false\tboolean flag = true;"
+      },
+      {
+        "question": "final、finally、finalize 的区别",
+        "answer": "final 是一个修饰符，用于声明不可变的变量、方法或类；finally 是异常处理结构的一部分，用于保证某段代码一定被执行，常用于资源释放；finalize() 是 Object 类中的方法，在对象被 GC 回收前被调用一次，但已被弃用，不推荐使用。三者虽然名称相似，但含义和用途完全不同。\n\n--追问--\nfinal 修饰引用类型变量是否可以改变对象内容？\t可以改变内容，但不能改变引用指向\nfinally 一定执行吗？\t除了 System.exit()、JVM 崩溃外，都会执行\nfinalize() 会自动调用吗？\t不保证，且不推荐使用，可用 try-with-resources 替代"
+      },
+      {
+        "question": "包装类和基本类型的区别",
+        "answer": "Java 中的基本类型是非对象类型，如 int、boolean，用于高性能计算。而包装类是这些类型的对象封装版本，如 Integer、Boolean，可以用于集合、泛型等需要对象的场景。包装类支持自动装箱和拆箱，但使用不当可能导致性能下降或空指针异常。此外，一些包装类（如 Integer）在一定范围内有缓存机制，避免频繁创建对象。\n\n\n-追问-\nInteger a = 128; Integer b = 128; a == b 的结果？\tfalse，超出缓存范围，比较的是地址\nint 和 Integer 哪个性能更好？\tint 更好，无对象开销\nList<int> 能否使用？\t不能，只能使用 List<Integer>\n自动装箱/拆箱的风险？\t会引发 NullPointerException 或性能问题"
+      },
+      {
+        "question": "Java中的多态是什么？如何实现？",
+        "answer": "多态是指同一个行为具有多个不同表现形式的能力。在Java中，多态性允许不同类的对象对同一消息做出响应，即同一方法调用可以有不同的行为。\n\nJava多态的实现主要通过以下方式：\n1. 继承：子类继承父类，并重写父类的方法\n2. 接口：类实现接口，并提供接口方法的具体实现\n3. 方法重写：子类重写父类的方法，使其具有不同的行为\n\n示例代码：\n```java\n// 父类\nclass Animal {\n    public void makeSound() {\n        System.out.println(\"Some sound\");\n    }\n}\n\n// 子类\nclass Dog extends Animal {\n    @Override\n    public void makeSound() {\n        System.out.println(\"Bark\");\n    }\n}\n\nclass Cat extends Animal {\n    @Override\n    public void makeSound() {\n        System.out.println(\"Meow\");\n    }\n}\n\n// 使用多态\nAnimal animal1 = new Dog(); // 父类引用指向子类对象\nAnimal animal2 = new Cat();\n\nanimal1.makeSound(); // 输出 \"Bark\"\nanimal2.makeSound(); // 输出 \"Meow\"\n```"
+      },
+      {
+        "question": "String、StringBuffer 和StringBuilder的区别",
+        "answer": "String 是不可变类，适合少量、只读字符串操作；StringBuffer 是线程安全的可变字符串（方法加锁），适合多线程使用；而 StringBuilder 是非线程安全的可变字符串，性能更高，适合单线程环境中频繁拼接字符串的场景。\n\n"
+      },
+      {
+        "question": "StringBuilder 怎么实现",
+        "answer": "StringBuilder 是 Java 提供的可变字符串类，底层通过一个 char[] 数组实现，支持动态扩容。它继承自 AbstractStringBuilder，所有核心操作都集中在父类中。相比不可变的 String 类，StringBuilder 更加高效，适合在单线程环境下频繁进行字符串拼接操作。"
+      },
+      {
+        "question": "面向对象的三大特性是什么？",
+        "answer": "封装（隐藏实现细节，通过访问修饰符控制）、继承（子类复用父类特性）、多态（同一方法不同实现，如重写和接口）。"
+      },
+      {
+        "question": "抽象类（Abstract Class）和接口（Interface）的区别？",
+        "answer": "抽象类可以有构造方法和成员变量，接口只能有 public static final 常量；接口支持多继承，抽象类单继承；Java 8 后接口可用 default 方法"
+      },
+      {
+        "question": "重载（Overload）和重写（Override）的区别？",
+        "answer": "重载：同一类中方法名相同，参数不同；重写：子类覆盖父类方法，方法签名相同"
+      },
+      {
+        "question": "== 和 equals() 的区别？",
+        "answer": "== 比较基本类型的值，或引用类型的内存地址；而equals 默认比较地址，但通常被重写为比较内容。需要注意的是，重写equals方法必须同时重写hashCode方法，并注意null 安全。"
+      },
+      {
+        "question": "为什么 String 设计为不可变？",
+        "answer": "String 被设计为不可变，主要是为了保障安全性（如防止敏感参数被篡改）、支持线程安全、缓存哈希值以优化集合操作、实现字符串池的内存复用，以及确保类加载机制的正确性。例如，如果 String 可变，哈希表的键可能失效，字符串池的共享机制也会被破坏。"
+      },
+      {
+        "question": "自动装箱与拆箱的原理及潜在问题？",
+        "answer": "自动装箱是Java将基本类型自动转换为包装类对象的过程，如int转换为Integer，拆箱则是反向操作。编译器通过插入valueOf（）和intValue（）方法实现。潜在问题包括：\n1）缓存机制：如Integer 默认缓存是-128~127，超出范围的对象用==比较会失败，需用equals（）方法。\n2）性能损耗：在循环中频繁拆箱装箱会产生大量临时对象，应优先使用基本类型\n3）空指针风险：拆箱null对象会抛出异常，需确保非空或显示检查\n4）方法重载问题：需注意参数类型匹配，避免歧义。"
+      },
+      {
+        "question": "如何保证集合线程安全？",
+        "answer": "保证集合线程安全的方法主要有四种：\n\n同步包装类：通过 Collections.synchronizedXXX 包装集合，但性能较低；\n并发集合：使用 ConcurrentHashMap、CopyOnWriteArrayList 等 JUC 类，适合高并发场景；\n不可变集合：如 Java 9 的 List.of() 或 Guava 的不可变集合，直接避免并发修改；\n显式加锁：通过 synchronized 或 ReentrantLock 手动同步。\n实际开发中，优先选择 ConcurrentHashMap 和 CopyOnWriteArrayList，它们在性能和安全性上更平衡。"
+      },
+      {
+        "question": "Error 和 Exception 的区别？",
+        "answer": "Error 和 Exception 都是 Throwable 的子类，但核心区别有三点：\n\n来源：Error 是 JVM 或系统引发的严重错误（如内存溢出），程序无法处理；Exception 是程序逻辑或外部问题导致的异常（如文件未找到），可以捕获处理。\n处理方式：Error 是非检查型，通常不捕获；Exception 分为检查型（必须处理）和非检查型（如空指针异常）。\n可恢复性：Error 不可恢复，程序应终止；Exception 可通过代码恢复。\n例如：OutOfMemoryError 是 Error，而 IOException 是检查型 Exception。"
+      },
+      {
+        "question": "try-catch-finally 中 return 的执行顺序？",
+        "answer": "在 try-catch-finally 中：\n\n如果 try 或 catch 中有 return，会先计算返回值并暂存，再执行 finally。\n若 finally 中无 return，最终返回暂存的值（基本类型不可变，引用类型对象内容可变）。\n若 finally 有 return，它会覆盖之前的返回值，甚至吞没异常。\n例如：try { return 1; } finally { return 2; } 会返回 2。"
+      },
+      {
+        "question": "Java 8 新特性",
+        "answer": "Java 8 的主要新特性包括：\n\nLambda 表达式：简化函数式编程，替代匿名内部类；\nStream API：通过链式操作处理集合，支持并行流；\n新日期时间 API：提供线程安全的 LocalDate、LocalTime；\nOptional：显式处理 null 值，减少空指针异常；\n默认方法：允许接口定义默认实现，增强扩展性；\n方法引用：进一步简化 Lambda 表达式（如 System.out::println）。\n这些特性使 Java 更支持函数式编程，提升了代码简洁性和开发效率。"
+      },
+      {
+        "question": "类加载过程？",
+        "answer": "类的加载过程分为以下阶段：\n\n\n加载：从磁盘读取字节码到内存，生成Class对象。\n验证：确保字节码符合JVM规范。\n准备：为静态变量分配内存并赋零值（final常量直接赋值）。\n解析：将符号引用转换为直接引用。\n初始化：执行<clinit>()方法，完成静态变量赋值和静态代码块。\n初始化完成后，类即可被使用，最终满足条件时会卸载。"
+      },
+      {
+        "question": "集合框架主要接口，什么场景使用",
+        "answer": "Java 集合框架的核心接口分为 Collection 和 Map。\n\nList 适用于有序可重复场景（如商品列表，用 ArrayList）。\nSet 用于去重（如用户ID去重，用 HashSet）。\nQueue/Deque 用于任务调度（如优先级队列，用 PriorityQueue）。\nMap 用于键值对存储（如缓存，用 HashMap）。\n在并发场景下，优先选择 ConcurrentHashMap 或 CopyOnWriteArrayList。"
+      },
+      {
+        "question": "final关键字的作用（修饰类、方法、变量）？",
+        "answer": "final关键字的作用根据修饰目标不同：\n\t\t1. 修饰类：表示类不可继承，如String类。\n\t\t2. 修饰方法：防止子类重写，确保方法行为稳定。\n\t\t3. 修饰变量：定义常量，基本类型值不可变，引用类型引用不可变。\n它常用于设计不可变类、保护核心方法逻辑，或定义全局常量，提升代码安全性和可维护性。\n"
+      },
+      {
+        "question": "java 的IO流是什么",
+        "answer": "Java IO 流是 Java 提供的一套处理输入输出的 API，分为字节流（处理二进制）和字符流（处理文本），又可分为输入流和输出流。常见流如 FileReader、BufferedReader、FileOutputStream 等，用于文件读写、网络通信、内存操作等场景。\n\n--追问--\n字节流和字符流的区别？\t前者处理二进制，后者处理字符（文本）\nBufferedReader 和 FileReader 有什么区别？\t前者有缓冲，提高效率，支持 readLine()\n如何处理中文乱码？\t使用 InputStreamReader 指定编码如 UTF-8\nIO 和 NIO 的区别？\tIO 是阻塞式，NIO 是非阻塞、基于通道"
+      },
+      {
+        "question": "栈和队列在java 中的区别",
+        "answer": "在 Java 中，栈（Stack）是一种后进先出（LIFO）的数据结构，常用于函数调用、撤销操作等场景；而队列（Queue）是一种先进先出（FIFO）的数据结构，常用于排队、消息传递等。栈常用 push() 和 pop() 操作，而队列使用 offer() 和 poll()。Java 提供了 Stack 类和多个 Queue 实现类如 LinkedList、ArrayDeque 等来支持这两种结构。\n\n--追问--\nStack 推荐使用吗？\t不推荐，可用 Deque 替代（如 ArrayDeque）\nStack 是线程安全的吗？\t是的，但性能差（同步方法）\n如何实现一个栈/队列？\t可用数组或链表实现，自定义封装\n"
+      }
+    ],
+    "MySQL": [
+      {
+        "question": "MySQL索引的类型有哪些？",
+        "answer": "MySQL索引的主要类型有：\n1. 普通索引（INDEX）：最基本的索引类型，没有任何限制\n2. 唯一索引（UNIQUE）：索引列的值必须唯一，但允许有空值\n3. 主键索引（PRIMARY KEY）：是一种特殊的唯一索引，不允许有空值\n4. 组合索引：在表的多个字段上创建的索引，查询时遵循最左前缀原则\n5. 全文索引（FULLTEXT）：用于全文搜索，只支持MyISAM和InnoDB引擎，且只支持CHAR、VARCHAR和TEXT类型的列\n6. 空间索引（SPATIAL）：用于地理空间数据类型的字段\n\n在底层实现上，MySQL的索引类型按照数据结构可分为：\n- B+Tree索引：最常用的索引类型，大部分引擎都支持\n- Hash索引：只有Memory引擎支持，查询单条数据很快\n- R-Tree索引：用于空间数据索引\n- Full-text索引：用于全文索引"
+      },
+      {
+        "question": "SQL的执行过程",
+        "answer": "SQL 的执行过程包括以下几个步骤：首先由解析器进行词法与语法分析，然后进行语义分析和权限检查。接下来优化器会生成多种执行计划并选择代价最低的。最终由执行器根据执行计划调度存储引擎完成数据读写操作，并将结果返回客户端。\n\n--追问--\nSQL 是如何执行的？\t解析 → 优化 → 执行 → 结果返回\n什么是执行计划？\t优化器生成的最优查询方案\n哪个阶段会报语法错误？\t解析器阶段\nSQL 性能慢在哪个阶段？\t通常是执行计划不优、存储引擎访问慢\n如何查看 SQL 执行计划？\t使用 EXPLAIN 或 ANALYZE\n\n\n\n"
+      },
+      {
+        "question": "聚簇索引和非聚簇索引的区别",
+        "answer": "聚簇索引是将数据和索引存储在一起的索引结构，例如MySQL 的 InnoDB 存储引擎默认使用主键作为聚簇索引，叶子节点存储完整的数据行。而非聚簇索引的叶子节点只存储键值和主键值，需要通过主键回表查询。聚簇索引查询主键效率高，非聚簇索引适合辅助字段查询。\n\n--追问--\nInnoDB 的聚簇索引是什么？\t主键索引，数据和索引存一起\n非主键查询为什么要回表？\t非聚簇索引只存主键值，需通过主键查数据\n一张表能有几个聚簇索引？\t只能有一个\n什么是回表？\t非聚簇索引查到主键后，再去聚簇索引查数据\n聚簇索引删除和插入会怎样？\t可能引发页分裂或移动，影响性能"
+      },
+      {
+        "question": "回表是什么？",
+        "answer": "回表是指查询时使用非聚簇索引定位到主键值后，再通过主键去聚簇索引中获取完整数据行的过程。回表通常出现在非聚簇索引中不包含所需查询字段的情况下。可以通过使用覆盖索引或联合索引来减少回表，从而提升查询性能。\n\n--追问--\n什么是回表？\t非聚簇索引查不到数据，需要回主键索引查\n哪种索引会导致回表？\t非聚簇索引\n如何避免回表？\t覆盖索引、联合索引、避免 SELECT *\n回表一定慢吗？\t一般比覆盖索引慢，但也要视数据量和缓存情况而定"
+      },
+      {
+        "question": "索引的最左前缀匹配原则是什么？",
+        "answer": "最左前缀匹配原则是联合索引生效的关键规则，指的是查询条件必须从联合索引的最左字段开始连续匹配。如果跳过了中间某一列，后面的字段索引将无法使用。正确使用最左前缀原则可以提升查询效率，避免索引失效。\n\n-追问-\n什么是最左前缀匹配？\t查询必须从联合索引的最左字段开始连续匹配\n联合索引 (a, b, c)，哪些查询能用上索引？\ta；a + b；a + b + c\nWHERE b = 1 能否使用索引？\t❌ 跳过 a，不符合最左前缀\nLIKE 查询能用索引吗？\tLIKE 'abc%' 可以，LIKE '%abc' 不行"
+      },
+      {
+        "question": "索引下推是什么？",
+        "answer": "索引下推是 MySQL 5.6 引入的一项优化技术，它可以在存储引擎层对多个索引字段进行条件判断，从而减少回表次数。以前只有最左字段能用于索引，其它条件只能在 Server 层判断；现在可以将多个条件“下推”到存储引擎中提前过滤，提高查询效率。\n\n--追问--\n什么是索引下推？\t索引字段的条件在存储引擎层提前判断，减少回表\n哪个版本引入的索引下推？\tMySQL 5.6 开始支持\n怎么判断是否使用了索引下推？\tEXPLAIN 的 Extra 中看到 Using index condition\nICP 和覆盖索引的区别？\t覆盖索引不回表，ICP 是减少回表次数\nICP 适用于聚簇索引吗？\t通常用于非聚簇索引（辅助索引）"
+      },
+      {
+        "question": "创建索引要注意什么？",
+        "answer": "✅ 一、创建索引时要注意的关键点\n🧠 重点\t📘 说明\n1️⃣ 选择合适的字段\t经常用于 WHERE、JOIN、ORDER BY、GROUP BY 的字段\n2️⃣ 控制索引数量\t索引越多，写入越慢，占用空间越大\n3️⃣ 遵循最左前缀原则\t联合索引必须从最左字段开始连续匹配\n4️⃣ 避免重复或冗余索引\t多个索引覆盖相同字段，会导致浪费\n5️⃣ 使用覆盖索引优化查询\t查询字段都在索引中 → 避免回表\n6️⃣ 慎重给频繁更新的字段建索引\t更新时索引也要同步维护，会降低写入性能\n7️⃣ 字段选择性高时效果更好\t选择性高的字段更能过滤数据，提升查询效率\n8️⃣ 注意字符串字段的前缀索引\t长字符串如 VARCHAR(500)，可使用前缀索引 INDEX(col(50))\n9️⃣ 不要对小表盲目加索引\t小表全表扫描反而更快，加索引得不偿失\n🔟 合理使用唯一索引和普通索引\t唯一索引用于唯一性约束；普通索引用于查询优化\n\n-- 追问--\n索引建在哪些字段上？\tWHERE、JOIN、ORDER BY、GROUP BY\n为什么不能建太多索引？\t写入变慢，占空间，查询优化复杂\n联合索引和单列索引有何区别？\t联合索引支持多字段查询，受最左前缀限制\n什么是选择性？\t不重复值/总记录数，越高越适合建索引\n如何避免回表？\t使用覆盖索引（查询字段都在索引中）"
+      },
+      {
+        "question": "索引一定有效吗？如何排查索引效果",
+        "answer": "索引并不是建了就一定有效，是否生效取决于 SQL 是否符合索引使用规则，如最左前缀原则、字段类型一致、避免函数/表达式等。可以使用 EXPLAIN 和 ANALYZE 命令查看查询是否使用了索引，并通过字段如 key、type、rows 等判断索引效果。\n\n--追问--\n索引一定会生效吗？\t❌ 不一定，SQL 写法会影响索引使用\n如何判断索引是否生效？\t用 EXPLAIN 看 key 字段是否为空，type 是否为 ALL\n为什么 WHERE name = 'Tom' 没用上索引？\t可能对 name 使用了函数，或有隐式类型转换\n如何避免索引失效？\t遵守最左前缀原则、避免函数、确保字段类型一致\n索引字段能用 OR 吗？\t多个字段 OR 时，若有字段无索引，会导致全表扫描\n\n✅ 三、如何优化索引使用？\n优化建议\t说明\n避免对索引字段使用函数\t如 DATE()、LEFT()\n避免隐式类型转换\t使用与字段类型一致的参数，如 id = 123 而不是 id = '123'\n优化 OR 查询\t改为 UNION 或使用多个索引\n使用覆盖索引\t查询字段都在索引中，避免回表\n调整联合索引顺序\t最左字段放选择性高的字段，保证最左前缀原则\n使用前缀匹配\tLIKE 'abc%' 可以用索引，'%abc' 无法用索引\nEXPLAIN + ANALYZE 分析实际执行路径"
+      },
+      {
+        "question": "MVCC 是什么？",
+        "answer": "MVCC（多版本并发控制）是 InnoDB 实现读已提交和可重复读隔离级别的关键机制。它通过为每行记录保存多个版本（undo log）来实现事务间的读写隔离，避免加锁，从而提高数据库并发性能。MVCC 主要适用于快照读，而当前读仍需要加锁。\n\n--追问--\n什么是 MVCC？\t多版本并发控制，事务读写互不影响\nMVCC 是如何实现的？\tundo log + 隐藏字段（trx_id 和 roll_pointer）\n哪些隔离级别使用 MVCC？\t读已提交、可重复读\nMVCC 会加锁吗？\t快照读不加锁，当前读加锁\nMVCC 有什么优点？\t提高并发，避免读写冲突，提高性能"
+      },
+      {
+        "question": "事务隔离级别有哪些",
+        "answer": "事务隔离级别定义了事务之间的可见性，共有四种：读未提交、读已提交、可重复读、串行化。每种级别对脏读、不可重复读和幻读的处理不同。MySQL 默认使用“可重复读”，通过 MVCC 实现一致性读，并结合间隙锁避免幻读。\n\n--追问--\n有哪些事务隔离级别？\t四种：RU、RC、RR、Serializable\n哪个隔离级别避免了幻读？\tSerializable（MySQL 中 RR 结合间隙锁也可避免）\nMySQL 默认隔离级别是什么？\t可重复读（Repeatable Read）\n幻读和不可重复读有什么区别？\t幻读是“行数变化”，不可重复读是“值变化”\n如何设置事务隔离级别？\tSET SESSION TRANSACTION ISOLATION LEVEL ..."
+      },
+      {
+        "question": "有哪些锁类型？乐观锁和悲观锁是什么？发生死锁怎么解决",
+        "answer": "数据库中常用锁有表级锁和行级锁，InnoDB 支持多种锁机制如共享锁、排他锁、意向锁等。乐观锁通过版本号控制并发，适合读多写少场景；悲观锁通过数据库加锁来防止数据冲突。死锁是事务间互相等待资源引起的，MySQL 会自动检测并回滚事务，开发中应注意锁顺序和事务粒度以避免死锁。\n\n--追问--\n数据库有哪些锁？\t表锁、行锁、共享锁、排他锁、意向锁等\n乐观锁和悲观锁的区别？\t乐观锁不加数据库锁，悲观锁加数据库锁\n死锁是什么？如何避免？\t两个事务互相等待资源，控制锁顺序可避免死锁\nMySQL 如何检测死锁？\tInnoDB 会自动检测并回滚其中一个事务\n如何实现乐观锁？\t用版本号或时间戳实现并发控制"
+      },
+      {
+        "question": "如何进行SQL 调优",
+        "answer": "SQL 调优是为了提升查询效率和系统性能。首先要通过慢查询日志或监控工具找出慢 SQL，然后使用 EXPLAIN 分析执行计划，定位是否使用了索引、是否出现全表扫描或 filesort 等问题。最后通过加索引、重写 SQL、字段优化等方式进行调优，必要时还可考虑分库分表、缓存等手段。\n\n--追问--\nSQL 慢了怎么排查？\t慢日志 → EXPLAIN → 分析 → 优化\n如何判断 SQL 是否用了索引？\tEXPLAIN 查看 key 字段\n什么是覆盖索引？\t查询字段都在索引中，无需回表\n什么是最左前缀原则？\t联合索引从最左字段开始连续使用\n如何避免 SELECT *？\t只查必要字段，减少 IO"
+      },
+      {
+        "question": "乐观锁和悲观锁是什么？",
+        "answer": "乐观锁和悲观锁是并发控制的两种策略。乐观锁通过版本号或时间戳实现，不加数据库锁，适用于并发高但冲突少的场景；悲观锁通过数据库锁如 SELECT ... FOR UPDATE 来防止并发冲突，适用于冲突频繁的场景。乐观锁性能高但需要处理重试逻辑，悲观锁使用简单但可能出现阻塞或死锁。\n\n--追问--\n什么是乐观锁？\t不加数据库锁，使用版本号控制并发\n什么是悲观锁？\t加数据库锁，防止其他事务访问\n乐观锁如何实现？\t使用版本号或时间戳字段，更新时判断\n悲观锁如何实现？\t使用 SELECT ... FOR UPDATE 加行锁\n乐观锁适合什么场景？\t高并发、读多写少、冲突概率低\n乐观锁失败怎么办？\t检查失败，重试或提示用户"
+      }
+    ],
+    "MyBatis": [
+      {
+        "question": "MyBatis中#{}和${}的区别是什么？",
+        "answer": "在MyBatis中，#{}和${}都是用于SQL语句参数的占位符，但它们有以下区别：\n\n#{}：\n1. 预编译处理，会将参数替换为?，然后调用PreparedStatement的set方法来设置参数值\n2. 可以防止SQL注入攻击\n3. 会自动添加引号\n\n${}：\n1. 直接文本替换，将参数的值直接替换到SQL语句中\n2. 不能防止SQL注入\n3. 不会自动添加引号\n\n使用场景：\n- #{}：适用于大多数参数传递的场景，特别是传递用户输入的参数时\n- ${}：主要用于传入数据库对象，如表名、列名等，或者用于ORDER BY子句"
+      },
+      {
+        "question": "执行流程",
+        "answer": "MyBatis 的执行流程包括：加载配置文件，创建 SqlSessionFactory，然后通过 SqlSession 获取 Mapper 接口代理对象，调用接口方法时会执行对应的 SQL，并将查询结果映射为 Java 对象。MyBatis 内部使用 MappedStatement 管理 SQL 映射，Executor 执行 SQL，TypeHandler 做类型转换，ResultMap 做结果映射。\n\n--追问--\nMyBatis 执行流程是怎样的？\t加载配置 → 创建 SqlSession → 获取 Mapper → 执行 SQL → 映射结果\nSqlSession 是线程安全的吗？\t❌ 不是，不能在多个线程间共享\nMapper 是如何实现的？\t使用 JDK 动态代理生成实现类\nMyBatis 如何执行一条 SQL？\t通过 namespace.id 定位 SQL，封装参数，执行 SQL，映射结果\nSqlSession 和 SqlSessionFactory 有何区别？\tSqlSessionFactory 是工厂，SqlSession 是执行器，生命周期不同"
+      },
+      {
+        "question": "与Hibernate有哪些不同",
+        "answer": "MyBatis 是半自动 ORM 框架，开发者手写 SQL，灵活性高，适合复杂业务与高性能场景；Hibernate 是全自动 ORM 框架，自动生成 SQL，更适合快速开发与简单业务。MyBatis 控制力强，但开发成本稍高；Hibernate 开发效率高，但 SQL 优化不灵活。项目可根据需求选择或结合使用。\n\n--追问--\nMyBatis 和 Hibernate 的区别？\t是否自动生成 SQL、控制力 vs 开发效率、缓存机制等\nMyBatis 更适合哪些场景？\t高性能、复杂 SQL、控制力要求高\nHibernate 的优点是什么？\t快速开发、自动建表、缓存机制丰富\nHibernate 会有哪些性能问题？\t自动生成 SQL 不优、N+1 查询、懒加载问题\n项目中如何选择？\t根据业务复杂度、团队熟悉度、性能要求判断"
+      },
+      {
+        "question": "动态sql有什么用？执行原理？有哪些动态sql？",
+        "answer": "MyBatis 的动态 SQL 能根据条件动态拼接 SQL，解决传统 JDBC 中 SQL 灵活性差、判断逻辑混乱的问题。其执行原理是将 XML 中的标签解析为 SqlNode 树，执行时根据参数动态生成最终 SQL。它支持 <if>、<choose>、<where>、<set>、<foreach> 等标签，适用于复杂条件查询、批量操作等场景。\n\n--追问--\nMyBatis 动态 SQL 有什么用？\t实现条件判断、批量操作、SQL 模板化\n动态 SQL 的执行原理？\t解析为 SqlNode，执行时拼接为完整 SQL\n<where> 和 <if> 有什么区别？\t<where> 会自动去掉多余 AND、OR\n<foreach> 有哪些常见用法？\t用于 IN 查询、批量插入、批量更新等\n<choose> 有什么作用？\t实现 if-else-if 的多条件判断"
+      },
+      {
+        "question": "JDBC有哪些不足？mybatis怎么解决的",
+        "answer": "JDBC 是 Java 操作数据库的底层标准 API，虽然功能全面，但存在代码冗余、参数绑定繁琐、结果封装复杂、事务管理不灵活等问题。MyBatis 封装了 JDBC 的大部分底层操作，提供了 SQL 与 Java 分离、自动参数/结果映射、动态 SQL、多级缓存等功能，大幅提升了开发效率和代码可维护性。\n\n--追问--\nJDBC 有哪些缺点？\t模板代码多、参数繁琐、结果封装难、事务控制复杂\nMyBatis 如何解决 JDBC 的问题？\t封装操作、自动映射、动态 SQL、缓存机制 等\nMyBatis 是 ORM 框架吗？\t是轻量级 ORM，更偏向 SQL 映射框架\n为什么选择 MyBatis 而不是 JDBC？\t简洁、易维护、支持复杂 SQL、扩展性强"
+      },
+      {
+        "question": "mybatis 的插件原理，以及如何编写一个插件？",
+        "answer": "一、MyBatis 插件的作用\nMyBatis 插件本质上是通过 拦截器（Interceptor） 对核心对象进行增强，常见用途包括：\n\nSQL 日志输出\n性能分析（SQL 执行耗时）\n自动分页（如 PageHelper 插件）\n参数加密、脱敏\n数据权限控制（如租户隔离）\n动态 SQL 修改\n\nMyBatis 插件采用责任链模式，通过 JDK 动态代理在执行 SQL 的关键节点（如参数设置、SQL 执行、结果处理）插入拦截器逻辑。插件可实现日志输出、分页、安全控制等功能。开发插件需实现 Interceptor 接口，并通过 @Intercepts 指定拦截方法，然后在配置文件中注册插件即可生效。\n\n --追问--\nMyBatis 插件原理是什么？\t基于 JDK 动态代理 + 拦截 4 大核心接口方法\n插件可以拦截哪些接口？\tExecutor、StatementHandler、ParameterHandler、ResultSetHandler\n插件的执行顺序如何？\t按配置顺序嵌套代理，形成责任链\n插件开发需要实现哪些方法？\tintercept()、plugin()、setProperties()\n插件和 Spring AOP 有什么区别？\t插件是 MyBatis 内部 AOP，仅限拦截核心 SQL 流程"
+      },
+      {
+        "question": "mybatis写个XML 映射文件，再写个DAO 接口就能执行的原理是什么？",
+        "answer": "MyBatis 能够实现“接口 + XML = 可执行 SQL”的能力，主要依赖于 JDK 动态代理机制和 XML 映射配置。MyBatis 会在启动时解析 Mapper 映射文件，并将 namespace 与接口绑定，SQL 语句封装成 MappedStatement。调用接口方法时，代理对象会根据方法名找到对应 SQL 并执行，最终返回结果。整个过程无需写实现类，极大简化了开发工作。\n\n--追问--\nMyBatis 接口没有实现类，怎么运行？\t使用 JDK 动态代理生成代理类\nXML 中的 SQL 是怎么和接口方法关联的？\t通过 namespace + id 匹配接口方法\ngetMapper() 的原理是什么？\t返回一个动态代理对象，实现了接口\nMappedStatement 是什么？\t封装 SQL、参数、返回值等信息的配置类\n如果接口方法名和 XML 不一致会怎样？\t报错：找不到对应的 MappedStatement"
+      }
+    ],
+    "Spring MVC": [
+      {
+        "question": "对Spring MVC的理解",
+        "answer": "Spring MVC 是基于 MVC 模式的 Web 框架，是 Spring 的核心模块之一。它通过 DispatcherServlet 作为请求分发中心，结合 HandlerMapping、Controller、ViewResolver 等组件，实现了请求的接收、业务处理、视图渲染。它支持注解驱动、RESTful 风格、自动参数绑定、异常处理等，开发灵活、高效、可扩展\n\n--追问--\nDispatcherServlet 的作用？\t是前端控制器，负责整个请求的调度\nMVC 各层职责分别是什么？\tModel（数据）、View（展示）、Controller（逻辑）\n请求参数是如何绑定的？\t通过 @RequestParam、@PathVariable、@ModelAttribute 等\nSpring MVC 如何处理异常？\t使用 @ControllerAdvice + @ExceptionHandler\nSpring MVC 和 Spring Boot 的关系？\tSpring Boot 对 Spring MVC 进行了自动配置和简化开发"
+      },
+      {
+        "question": "Spring MVC 的工作流程是什么？",
+        "answer": "Spring MVC的核心是围绕DispatcherServlet展开的。流程大致分为六步：\n\n用户请求首先由DispatcherServlet接收；\n它通过HandlerMapping找到对应的Controller和拦截器；\n通过HandlerAdapter适配调用Controller方法处理业务；\nController返回ModelAndView，包含数据和视图信息；\nViewResolver解析视图名成具体视图；\n视图渲染结果返回给用户。\n此外，拦截器在请求前后加入逻辑，异常处理器全局管理错误，适配器和解析器则负责解耦不同实现方式。"
+      },
+      {
+        "question": "@Controller 和 @RestController 的区别？",
+        "answer": "@Controller 和 @RestController 的区别主要体现在响应处理上：\n\n@Controller 通常用于传统 Web 应用，返回视图名称（如 JSP），需配合 @ResponseBody 注解才能直接返回数据。\n@RestController 是 Spring 为 RESTful API 设计的组合注解，默认将方法返回值直接序列化为 JSON/XML，省略视图解析步骤。\n例如，用 @RestController 时，返回字符串会直接作为 JSON 响应体，而 @Controller 返回字符串会被解析为视图路径。"
+      },
+      {
+        "question": "如何处理 GET 和 POST 请求？",
+        "answer": "处理 GET 和 POST 请求的核心区别在于语义和参数传递方式：\n\nGET 用于获取数据，参数在 URL 中可见，适合查询操作。\nSpring 中通过 @GetMapping 或 @RequestMapping 指定 GET 方法。\n参数用 @RequestParam 或 @PathVariable 接收。\nPOST 用于提交数据，参数在请求体中，适合创建或更新操作。\n使用 @PostMapping 注解，通过 @RequestBody 接收复杂对象（如 JSON）。\n例如，查询用户用 GET，创建用户用 POST。”\n加分细节：\n安全性：GET 参数暴露在 URL 中，敏感数据需用 POST。\n幂等性：GET 是幂等的（多次调用结果相同），POST 非幂等。\nREST 规范：结合其他方法（PUT 更新、DELETE 删除）实现 RESTful API。\n参数校验：POST 请求可通过 @Valid 注解触发数据校验（如 JSR-303）。"
+      },
+      {
+        "question": "DispatcherServlet 的作用是什么？",
+        "answer": "DispatcherServlet 是 Spring MVC 的前端控制器，负责统一调度请求处理流程。它的核心作用包括：\n\n作为所有请求的入口，协调后续组件协作；\n通过 HandlerMapping 定位处理请求的 Controller；\n使用 HandlerAdapter 调用 Controller 方法；\n根据返回结果，驱动视图渲染或直接返回数据（如 JSON）。\n本质上，它是 Spring MVC 流程的中央调度器。”\n加分点\n扩展性：通过配置自定义组件（如 HandlerInterceptor、ViewResolver）灵活扩展功能。\nREST 支持：配合 @ResponseBody 或 @RestController，直接返回数据而非视图。\n异常处理：通过 HandlerExceptionResolver 集中管理全局异常。"
+      },
+      {
+        "question": "如何传递数据到视图（View）？",
+        "answer": "在 Spring MVC 中，传递数据到视图主要有四种方式：\n\nModel 或 ModelMap：作为控制器方法参数，通过 addAttribute() 添加键值对数据。\nModelAndView：同时封装数据和视图名称，适合需要显式控制视图的场景。\n@ModelAttribute：自动将方法返回值或请求参数绑定到模型，简化数据传递。\nMap 或 HttpServletRequest：直接操作底层结构传递数据。\n例如，使用 Model 对象时，视图层（如 JSP）可通过 ${user.name} 访问模型中的 user 属性。”\n加分细节\n视图技术适配：数据传递方式与视图技术无关，适用于 JSP、Thymeleaf、FreeMarker 等。\nRESTful 场景：若使用 @RestController，数据通过 @ResponseBody 直接返回 JSON，无需视图渲染。\n数据作用域：模型数据默认存储在请求作用域（Request Scope），适用于单次请求。"
+      },
+      {
+        "question": "@RequestParam 和 @PathVariable 的区别？",
+        "answer": "@RequestParam 和 @PathVariable 的区别在于参数来源和用途：\n\n@RequestParam 从 URL 的查询字符串（?key=value）中获取参数，适用于可选或非关键参数，例如 /user?id=1。\n@PathVariable 从 URL 的路径片段中提取参数，常用于 RESTful 设计标识资源，例如 /user/{id}。\n关键区别是：@RequestParam 的参数是键值对形式，而 @PathVariable 是 URL 结构的一部分。\n\n加分细节\n默认值设置：@RequestParam 支持 defaultValue（如 @RequestParam(defaultValue=\"0\")），@PathVariable 不支持。\nRESTful 规范：@PathVariable 更符合 REST 风格，明确资源层级（如 /api/users/{userId}/orders/{orderId}）。\n编码差异：@RequestParam 的值会被 URL 编码，而 @PathVariable 的值是原始路径片段。"
+      },
+      {
+        "question": "如何配置视图解析器（ViewResolver）？",
+        "answer": "配置视图解析器的核心是根据视图技术（如 JSP、Thymeleaf）选择对应的 ViewResolver。\n\nJSP：配置 InternalResourceViewResolver，设置 prefix（路径前缀）和 suffix（文件后缀）。\nThymeleaf：需配置 TemplateResolver（模板路径）和 TemplateEngine，再通过 ThymeleafViewResolver 关联引擎。\nFreeMarker：类似地，配置 FreeMarkerViewResolver 和 FreeMarkerConfigurer。\n例如，JSP 解析器的配置会将视图名 home 映射到 /WEB-INF/views/home.jsp。”\n加分细节\n多视图解析器：可以配置多个 ViewResolver，通过 order 属性设置优先级。\n内容协商：结合 ContentNegotiatingViewResolver 支持多种视图格式（JSON/XML/HTML）。\n静态资源：需排除静态资源路径（如 /static/**），避免被视图解析器拦截。"
+      },
+      {
+        "question": " Spring MVC 如何处理异常？",
+        "answer": "Spring MVC 提供了多层异常处理机制：\n\n@ExceptionHandler：在单个控制器内处理特定异常，适合局部错误处理。\n@ControllerAdvice：定义全局异常处理器，统一管理所有控制器的异常。\nHandlerExceptionResolver：通过实现接口完全控制异常响应，适合复杂场景。\nSimpleMappingExceptionResolver：通过 XML 配置将异常映射到错误页面。\n例如，使用 @RestControllerAdvice 可以全局捕获 IllegalArgumentException 并返回格式化的 JSON 错误信息。”\n加分细节\n响应类型：支持返回 ModelAndView、ResponseEntity 或直接写入响应流，适配前后端分离或传统 Web 应用。\n优先级：@ExceptionHandler（控制器内） > @ControllerAdvice > HandlerExceptionResolver。\n业务解耦：通过全局异常处理器，集中管理错误日志和响应格式，提升代码可维护性"
+      },
+      {
+        "question": "spring 拦截链的实现",
+        "answer": "Spring 拦截链是一种责任链模式的实现，常用于对请求进行统一处理。通过实现 HandlerInterceptor 接口并注册到 WebMvcConfigurer 中，我们可以在请求前后执行逻辑，如权限校验、日志记录等。多个拦截器会组成一个链，按顺序执行 preHandle，再按逆序执行 postHandle 和 afterCompletion。拦截链是 Spring MVC 中非常常见且强大的扩展机制。"
+      },
+      {
+        "question": "springMVC父子容器是什么",
+        "answer": "在 Spring MVC 中，IOC 容器被设计为父子结构：父容器由 ContextLoaderListener 创建，主要管理 Service、DAO 等业务 Bean；子容器由 DispatcherServlet 创建，主要管理 Controller、视图解析器等 Web 层 Bean。子容器可以访问父容器中的 Bean，但反过来不行。通过这种结构，Spring 实现了业务逻辑和 Web 控制层的解耦、模块化、可扩展性强的架构设计。\n\n-追问-\n为什么需要父子容器？\t职责清晰，控制解耦，支持模块化\n子容器如何访问父容器的 Bean？\t通过继承关系，Spring 自动处理\n多个子容器之间可以共享 Bean 吗？\t不能直接共享，但可以共用父容器中的 Bean\n父子容器的源码在哪里体现？\tWebApplicationContext 继承自 ApplicationContext，注入时设置 parent"
+      }
+    ],
+    "Linux": [],
+    "框架": [],
+    "多线程": [
+      {
+        "question": "final 能否保证变量可见",
+        "answer": "final 关键字用于修饰不可变变量，它在构造对象完成后可确保字段对其他线程是可见的，JMM 对 final 字段提供了特殊语义，防止构造期间的重排序，因此可以用于对象的安全发布。但 final 并不等价于 volatile，它不保证运行时的写-读可见性，主要用于初始化时的可见性保障。\n\n--追问--\nfinal 和 volatile 的区别？\tfinal 是不可变，volatile 保证运行时可见性\nfinal 能防止指令重排吗？\t✅ 构造方法中对 final 字段的写不能重排\nfinal 能实现线程安全吗？\t✅ 对不可变对象（如 String、Integer）有帮助\nfinal 字段一定安全发布吗？\t✅ 构造完成后访问是线程安全的（前提：没有 this 泄露）\n"
+      },
+      {
+        "question": "什么是原子性、可见性和有序性？什么是指令重排",
+        "answer": "并发编程中存在三个核心特性：原子性、可见性和有序性。原子性确保操作不可中断；可见性确保一个线程对共享变量的修改能被其他线程看到；有序性保证程序执行顺序符合代码逻辑。而为了优化性能，JVM 和 CPU 会进行指令重排，可能破坏有序性。我们可以使用 volatile、synchronized、Lock 等机制来保证这三者，防止并发错误。\n\n--追问--\nvolatile 能保证原子性吗？\t❌ 不能，只保证可见性和有序性\nsynchronized 能保证什么？\t✅ 原子性、可见性、有序性\n指令重排会导致什么问题？\t初始化对象未完成就被使用（如单例模式）\n如何保证多线程下对象安全发布？\t使用 volatile 或 synchronized"
+      },
+      {
+        "question": "什么是CAS ",
+        "answer": "CAS 是一种无锁的原子操作，全称是 Compare And Swap，它通过比较内存中的值与期望值是否一致，来决定是否更新为新值。Java 中的 AtomicInteger 等类就是基于 CAS 实现的线程安全。它性能高、无锁，但也存在 ABA 问题、自旋开销大等缺点，通常通过版本号或其他机制解决。\n\n-追问-\nCAS 是如何保证线程安全的？\t基于底层硬件提供的原子指令\nCAS 有什么缺点？\tABA、自旋开销、不能操作多个变量\n如何解决 ABA 问题？\t使用版本号，如 AtomicStampedReference\nCAS 和 synchronized 的区别？\tCAS 是无锁方式，synchronized 是有锁阻塞方式"
+      },
+      {
+        "question": "如何控制线程执行顺序",
+        "answer": "控制线程执行顺序可以通过多种方式实现，如 join() 用于简单等待，wait/notify 和 Lock/Condition 用于精准线程间协作，CountDownLatch 和 Semaphore 用于同步、限流等场景。实际开发中选择方式需根据场景复杂度、性能要求和可读性权衡使用。\n\n"
+      },
+      {
+        "question": "线程和进程的区别？",
+        "answer": "进程：操作系统资源分配的最小单位，进程间相互独立。\n线程：CPU调度的最小单位，同一进程内的线程共享内存资源。"
+      },
+      {
+        "question": "如何创建线程？",
+        "answer": "继承 Thread 类，重写 run()。\n实现 Runnable 接口（推荐，避免单继承限制）。\n实现 Callable 接口（可返回结果，配合 FutureTask 使用）。"
+      },
+      {
+        "question": "start() 和 run() 的区别？",
+        "answer": "start() 启动新线程，调用 run() 方法。\n直接调用 run() 会在当前线程执行，而非多线程环境。"
+      },
+      {
+        "question": "RreentrantLock 的实现原理",
+        "answer": "ReentrantLock 是基于 AQS 实现的可重入互斥锁。它内部维护一个同步状态 state 和一个 FIFO 等待队列。默认是非公平锁，也可以设置为公平锁。它支持手动加锁、可中断锁、尝试锁、超时锁和多个条件变量。相比 synchronized 更加灵活强大。其本质是通过 CAS 修改状态 + AQS 队列实现线程安全的抢锁和排队机制。\n\n--追问--\nReentrantLock 是如何实现可重入的？\t同一线程多次获取锁，state 累加\n公平锁和非公平锁区别？\t公平锁按顺序排队，非公平锁可插队\nAQS 是什么？\t抽象队列同步器，用于构建锁、信号量等\n与 synchronized 区别？\t显式控制、支持中断、多个条件队列等\n为什么解锁要写在 finally？\t保证异常时也能释放锁，避免死锁"
+      },
+      {
+        "question": "线程的生命周期（状态）？",
+        "answer": "New（新建） → Runnable（就绪） → Running（运行）\nBlocked（阻塞，如等待锁）、Waiting（无限等待）、Timed Waiting（超时等待）\nTerminated（终止）。"
+      },
+      {
+        "question": "synchronized 的作用和底层原理？",
+        "answer": "修饰实例方法：锁对象实例。\n修饰静态方法：锁类的Class对象。\n同步代码块：显式指定锁对象。\nsynchronized的锁升级过程主要为了平衡性能与资源消耗。当对象未被锁定时，处于无锁状态。首次被线程访问时，升级为偏向锁，记录线程ID以减少后续同步开销。当有竞争时，偏向锁撤销，转为轻量级锁，线程通过CAS自旋尝试获取锁。若竞争加剧（如自旋失败），则升级为重量级锁，通过操作系统互斥量阻塞线程。整个过程体现了JVM针对不同竞争强度的自适应优化策略。"
+      },
+      {
+        "question": "什么是 volatile 关键字？它的作用和使用场景是什么？",
+        "answer": "volatile关键字通过禁用线程本地缓存和禁止指令重排序，保证了变量的可变性和有序性。典型场景包括状态标志位、单例模式的双重检查锁，以及独立观测变量的发布。但需注意，volatile不保证原子性。高竞争场景仍需锁或原子类。"
+      },
+      {
+        "question": "什么是线程安全？如何实现？",
+        "answer": "线程安全：多线程环境下数据行为符合预期。\n实现方式：同步代码块、ReentrantLock、原子类（如 AtomicInteger）、不可变对象。"
+      },
+      {
+        "question": "synchronized 和 ReentrantLock 的区别是什么？分别有哪些使用场景？对比优越点",
+        "answer": "synchronized是JVM管理的隐式锁，适合简单的同步场景，代码简洁且安全。而ReentrantLock是显式锁，支持可中断、超时、公平锁及多条件变量，适合复杂并发控制。\n例如，在需要实现带超时的锁获取，或细化线程间协调时，ReentrantLock更灵活。但需注意手动释放锁，避免遗漏导致死锁。\n\n对比两种锁：\nsynchronized：简单易用，JVM自动管理锁，适合大多数低竞争场景。\nReentrantLock：提供更灵活的锁控制（比如可中断、超时、公平锁），适合高竞争或复杂同步需求。\n\n比如在需要超时获取锁时，用ReentrantLock的tryLock；而简单的计数器同步可以直接用synchronized；\n总结选择，优先考虑synchronized，除非需要ReentrantLock的高级特性（比如公平性、条件变量）"
+      },
+      {
+        "question": "什么是死锁？如何避免？",
+        "answer": "死锁是多个线程因资源竞争陷入相互等待的状态，比如线程A持有锁1等锁2，线程B持有锁2等锁1。避免方法包括按顺序获取锁、设置超时、预分配资源等。例如在Java中，我会用ReentrantLock的tryLock()设置超时，破坏死锁条件。"
+      },
+      {
+        "question": "wait() 和 sleep() 的区别？",
+        "answer": "wait() 释放锁，属于 Object 类，需在同步块调用。\nsleep() 不释放锁，属于 Thread 类。"
+      },
+      {
+        "question": "ThreadLocal 的作用和原理？潜在问题？",
+        "answer": "作用：为每个线程保存独立的变量副本，避免共享冲突。\n原理：通过 ThreadLocalMap 存储变量，Key为弱引用，需手动 remove() 防止内存泄漏。\nThreadLocal 在使用时需要注意一些潜在问题，尤其是内存泄漏。\nThreadLocal 的数据存储在 Thread 类内部的 ThreadLocalMap 中，这里的 Key 是 ThreadLocal 实例（弱引用），Value 是线程的变量副本（强引用）。如果线程长期存活（比如线程池中的线程），并且没有手动调用 remove() 方法清理，即使 ThreadLocal 实例不再使用，Value 也不会被回收，因为 Key 被回收后，Value 仍然被线程强引用。久而久之，可能导致内存泄漏。\n解决方法是：\n\t1. 用完后显式调用 remove()：例如在 try-finally 块中确保清理。\n\t2. 避免频繁创建 ThreadLocal 实例：尽量声明为 static final，减少内存占用。\n\t3. 谨慎使用线程池：线程池中的线程会复用，残留的 Value 可能影响后续任务。\n此外，还需要注意：\n\t• 不要滥用 ThreadLocal：比如误将本该共享的变量（如全局计数器）存到 ThreadLocal 中，会导致逻辑错误。\n子线程数据传递问题：默认情况下，子线程无法继承父线程的 ThreadLocal 数据，可以通过 InheritableThreadLocal 解决，但线程池场景仍需额外处理。"
+      },
+      {
+        "question": "线程池的优点及核心参数？",
+        "answer": "优点：复用线程、控制并发数、管理任务队列。\n核心参数：\ncorePoolSize（核心线程数）\nmaximumPoolSize（最大线程数）\nkeepAliveTime（空闲线程存活时间）\nworkQueue（任务队列）\nRejectedExecutionHandler（拒绝策略，如AbortPolicy）。"
+      },
+      {
+        "question": "线程池的原理是什么？常见的线程池类型有哪些？如何使用线程池优化性能？",
+        "answer": "线程池通过复用已创建线程，减少资源开销，其核心是任务队列和线程调度策略。\njava提供了FixedThreadPool（固定线程数）\nCachedThreadPool（弹性线程数）\nSingleThreadExecutor（单线程）\nScheduledThreadPool（定时任务）等常见类型，分别适用于任务量固定和高并发短任务场景。\n使用线程池优化性能需要合理配置线程数，比如CPU密集型任务设置线程数约等于CPU核心数，IO密集型任务设置线程数约等于CPU核心数*（1+平均等待时间/计算时间），通用公式为线程数=CPU核心数*目标CPU利用率*（1+等待时间/计算时间）\n"
+      },
+      {
+        "question": "Callable 和 Runnable 的区别？",
+        "answer": "Callable 的 call() 方法可返回结果或抛出异常。\nRunnable 的 run() 无返回值且不能抛出受检异常。"
+      },
+      {
+        "question": "CountDownLatch 和 CyclicBarrier 的区别？",
+        "answer": "CountDownLatch：等待一组任务完成（一次性）。\nCyclicBarrier：多个线程相互等待达到屏障点（可重复使用）。"
+      },
+      {
+        "question": "什么是ABA问题？如何解决？",
+        "answer": "ABA问题：变量从A→B→A，CAS操作误认为未变化。\n解决：使用版本号（如 AtomicStampedReference）。"
+      },
+      {
+        "question": "守护线程（Daemon Thread）是什么？",
+        "answer": "为其他线程提供服务（如GC线程），主线程结束时自动终止。"
+      },
+      {
+        "question": "Thread.join() 的作用？",
+        "answer": "等待目标线程终止后再继续执行当前线程。"
+      },
+      {
+        "question": "如何安全停止线程？",
+        "answer": "使用 interrupt() 中断线程，结合 isInterrupted() 检查状态。\n避免已废弃的 stop() 或 suspend()。"
+      },
+      {
+        "question": "如果任务队列满了，线程池会如何处理新提交的任务？",
+        "answer": "当线程池的任务队列已满时，处理新提交任务的流程可以分为两个关键阶段：\n1. 线程池的扩容机制\n线程池会优先尝试扩容线程数来处理新任务：\n\t• 条件：如果当前线程数小于 maximumPoolSize（最大线程数），即使已经超过了 corePoolSize（核心线程数），线程池也会创建新的非核心线程立即处理任务。\n\t• 目的：通过临时扩容应对突发流量，避免任务堆积。\n2. 拒绝策略的触发\n如果线程数已达到 maximumPoolSize，且队列已满，则会触发拒绝策略，常见策略包括：\n\t• AbortPolicy（默认）：抛出 RejectedExecutionException 异常，强制开发者感知问题。\n\t• CallerRunsPolicy：由提交任务的线程（如主线程）直接执行任务。\n适用场景：适合降级处理，避免任务丢失，但可能阻塞主线程。\n\t• DiscardPolicy：静默丢弃新任务，无任何反馈。\n风险：可能导致业务逻辑中断。\n\t• DiscardOldestPolicy：丢弃队列中最旧的任务，然后重新提交当前任务。\n注意：可能丢弃关键任务，需谨慎使用。\n"
+      },
+      {
+        "question": "线程安全的集合有哪些",
+        "answer": "Java 提供了多种线程安全集合，包括早期的 Vector、Hashtable，以及现代高性能的 ConcurrentHashMap、CopyOnWriteArrayList 和 BlockingQueue 等。推荐使用 java.util.concurrent 包下的并发集合，它们通过 CAS、锁分段或复制写等机制提供更高的并发性能。根据具体的使用场景选择合适的线程安全集合是高并发编程的关键。\n\n"
+      },
+      {
+        "question": "主线程如何知道创建的子线程是否执行成功",
+        "answer": "主线程可以通过多种方式判断子线程是否执行成功。最简单的方式是 Thread.join()，但它无法获取结果；更常用的是 Future，可以获取子线程的返回值或异常；现代 Java 推荐使用 CompletableFuture 进行异步处理和回调。对于多个线程的同步，可以使用 CountDownLatch。具体方式应根据业务需求选择。\n\n--追问--\n如何获取线程执行结果？\t使用 Future、CompletableFuture\n怎么知道子线程有没有异常？\tFuture.get() 抛异常，或用 UncaughtExceptionHandler\n多个线程执行完才继续？\t用 CountDownLatch 或 CyclicBarrier\n主线程怎么等待所有线程完成？\t使用 Thread.join() 或线程池 + Future"
+      }
+    ],
+    "算法/数据结构": [],
+    "Spring Boot": [
+      {
+        "question": "什么是springboot",
+        "answer": "Spring Boot 是 Spring 的快速开发框架，它通过自动配置、起步依赖和内嵌服务器等机制简化了 Spring 应用的开发过程。Spring Boot 可以让我们以最少的配置快速构建独立运行的 Java 应用，非常适合开发 REST API、微服务和后台系统。它是现代 Java 后端开发的主流框架之一。\n\n--追问--\nSpring Boot 和 Spring 有什么区别？\tSpring 是基础框架，Boot 是快速启动器\n什么是自动配置？\t根据依赖和条件自动注入配置\nSpring Boot 如何实现零配置？\t依赖 starter + 自动配置类 + 默认值\nSpring Boot 如何部署？\t打包为 JAR 直接运行，无需外部容器"
+      },
+      {
+        "question": "Spring Boot 的核心优势是什么？",
+        "answer": "Spring Boot 的核心优势是大幅简化 Spring 应用的初始搭建和开发流程。它通过自动配置、内嵌服务器、Starter 依赖等机制，让开发者能够快速构建生产就绪的应用程序。例如，只需一个依赖和几行代码，就能启动一个 Web 应用，而无需手动配置 Tomcat 或 Spring MVC。这种‘约定优于配置’的设计理念，显著提升了开发效率，降低了维护成本。"
+      },
+      {
+        "question": "Spring Boot 自动配置的原理是什么？",
+        "answer": "Spring Boot 的自动配置原理基于条件化装配和约定优于配置的思想：\n\n通过 spring.factories 定义所有自动配置类，由 @EnableAutoConfiguration 触发加载；\n使用条件注解（如 @ConditionalOnClass）动态判断是否创建 Bean；\n结合 @ConfigurationProperties 将外部配置绑定到 Java 对象，实现灵活配置。\n例如，当类路径存在 DataSource 且未手动配置数据源时，Spring Boot 会自动配置一个基于连接池的 DataSource。"
+      },
+      {
+        "question": "如何自定义 Spring Boot 的配置？",
+        "answer": "Spring Boot 的配置自定义主要通过以下方式实现：\n\n配置文件：在 application.yml 中定义属性，使用 @Value 或 @ConfigurationProperties 注入。\n多环境配置：通过 Profile 隔离不同环境的配置（如 application-dev.yml）。\n外部化配置：支持命令行参数、环境变量覆盖默认值。\n自定义配置类：通过 @Configuration 和 @Bean 手动注册组件。\n条件化配置：结合 @Conditional 注解按需加载 Bean。\n例如，若需自定义数据库连接，可以在配置文件中定义 app.datasource 属性，并通过 @ConfigurationProperties 绑定到 DataSource 对象。”\n加分细节\n配置优先级：明确 Spring Boot 的配置加载顺序（如命令行参数优先级最高）。\n动态刷新：结合 Spring Cloud Config 实现配置热更新（需 @RefreshScope 注解）。\n自定义 Starter：封装通用配置逻辑，实现“开箱即用”。"
+      },
+      {
+        "question": "Spring Boot 如何实现多环境配置？",
+        "answer": "spring Boot 通过 Profile 机制实现多环境配置：\n\n配置文件命名：遵循 application-{profile}.yml 规则，如 application-dev.yml。\n激活环境：在 application.yml 中设置 spring.profiles.active=dev，或通过命令行参数动态指定。\n差异化配置：环境专属文件覆盖公共配置，例如开发和生产环境使用不同的数据库地址。\n此外，可以通过 @Profile 注解控制 Bean 的生效环境。”\n加分细节\n默认配置：未指定 Profile 时，加载 application.yml 中的默认配置。\n多 Profile 激活：支持同时激活多个 Profile（如 spring.profiles.active=dev,debug）。\n优先级规则：Profile 专属配置 > 默认配置，命令行参数 > 配置文件。"
+      },
+      {
+        "question": "Spring Boot Starter 的作用是什么？",
+        "answer": "Spring Boot Starter 的核心作用是简化依赖管理和自动配置。通过引入 Starter，开发者无需手动添加多个依赖或编写复杂配置，例如：\n\n依赖聚合：比如 spring-boot-starter-web 自动引入 Web 开发所需的全部依赖。\n自动配置：Starter 根据类路径中的 JAR 包自动配置 Bean（如数据源、事务管理器）。\n统一版本管理：通过父工程解决依赖版本冲突问题。\n这种设计显著提升了开发效率，降低了维护成本。"
+      },
+      {
+        "question": "如何监控 Spring Boot 应用？",
+        "answer": "监控 Spring Boot 应用的核心方法包括：\n\nActuator：通过 /health、/metrics 等端点暴露基础信息。\nSpring Boot Admin：提供可视化界面集中监控多个应用。\nPrometheus + Grafana：实现指标采集和动态仪表盘。\nELK/Loki：日志集中管理与分析。\n例如，引入 Actuator 后，结合 Prometheus 抓取指标数据，再通过 Grafana 展示实时监控图表。”"
+      },
+      {
+        "question": "Spring Boot 如何实现跨域（CORS）？",
+        "answer": "在 Spring Boot 中实现 CORS 主要有两种方式：\n\n全局配置：通过 WebMvcConfigurer 接口定义统一的跨域规则（如允许的来源、方法等）。\n注解配置：使用 @CrossOrigin 注解灵活控制单个接口的跨域行为。\n此外，如果集成 Spring Security，需额外配置 CorsConfigurationSource。例如，全局配置允许所有来源访问 /api 路径的 GET 和 POST 请求。”\n注意事项\n生产环境安全：避免使用 allowedOrigins(\"*\")，应指定具体的可信域名。\n预检请求（Preflight）：复杂请求（如 Content-Type: application/json）会先发送 OPTIONS 请求，需确保服务器正确处理。\n优先级：注解配置 > 全局配置 > 过滤器配置。"
+      },
+      {
+        "question": "Spring Boot 中的事务管理如何实现？",
+        "answer": "Spring Boot 通过 @Transactional 注解实现声明式事务管理：\n\n自动配置事务管理器（如 JpaTransactionManager）。\n通过 @Transactional 控制事务的传播行为、隔离级别和回滚规则。\n默认对 RuntimeException 回滚，可自定义异常类型。\n例如，在用户注册逻辑中，若保存用户和初始化权限的操作需要原子性，只需在方法上添加 @Transactional 注解即可。"
+      },
+      {
+        "question": "如何优化 Spring Boot 应用的启动速度？",
+        "answer": "优化 Spring Boot 启动速度的常见方法包括：\n\n精简依赖：移除未使用的 Starter 和自动配置类。\n懒加载：通过 spring.main.lazy-initialization 延迟 Bean 初始化。\n限制组件扫描范围：使用 @ComponentScan 指定精确包路径。\nJVM 调优：调整参数（如 -XX:TieredStopAtLevel=1）加快启动。\n例如，排除 DataSourceAutoConfiguration 可以避免无数据库场景下的连接池初始化耗时。"
+      },
+      {
+        "question": "Spring Boot 与 Spring Cloud 的关系是什么？",
+        "answer": "Spring Boot 是快速构建独立应用的框架，而 Spring Cloud 是基于 Spring Boot 的分布式系统工具集。\n\nSpring Boot 简化单个服务的开发（如自动配置、内嵌服务器）。\nSpring Cloud 解决服务之间的协作问题（如服务发现、配置中心）。\n两者结合，可以高效实现微服务架构。"
+      },
+      {
+        "question": "springboot如何实现定时任务？如何实现异步处理？",
+        "answer": "Spring Boot 通过 @Scheduled 实现定时任务，可以使用 fixedRate、fixedDelay 或 cron 表达式定义任务执行周期。通过 @EnableScheduling 启用功能。\n异步处理使用 @Async 注解，配合 @EnableAsync 实现任务后台执行，不阻塞主线程。也可返回 Future 或 CompletableFuture 获取处理结果。推荐配合线程池使用以提升性能。\n\n--追问--\n如何实现定时任务？\t用 @Scheduled 注解，需启用 @EnableScheduling\n如何实现异步执行？\t用 @Async 注解，需启用 @EnableAsync\n异步方法的返回值有哪些？\tvoid、Future、CompletableFuture\n定时任务会阻塞吗？\t会，除非调用异步方法\n如何配置异步线程池？\t使用 ThreadPoolTaskExecutor 自定义线程池\n\n\n"
+      }
+    ],
+    "微服务": [
+      {
+        "question": "SpringCloud 和Springboot 的区别",
+        "answer": "Spring Boot 主要是用来简化 Spring 应用的开发，包括自动配置、内嵌服务器等，适合开发单体应用或者微服务中的“单个服务”。\n\nSpring Cloud 则是基于 Spring Boot，专门为微服务架构提供一整套分布式治理能力，比如服务注册发现、配置中心、断路器、链路追踪、网关等。\n\n两者的关系是：Spring Cloud 依赖于 Spring Boot。Spring Boot 解决应用开发的问题，Spring Cloud 解决微服务系统治理的问题。"
+      },
+      {
+        "question": "Spring Cloud的核心功能模块有哪些？",
+        "answer": "Spring Cloud 主要由服务注册与发现（如Eureka）、配置中心（如Config/Nacos）、负载均衡（Ribbon）、服务调用（Feign）、断路器（Hystrix/Sentinel）、API网关（Zuul或Gateway）、消息总线（Bus）、分布式链路追踪（Sleuth+Zipkin）、安全组件（Security）等模块组成。这些组件共同为微服务架构提供了注册发现、配置管理、容错路由、服务治理、监控追踪等基础能力，帮助开发者快速构建和管理大规模微服务系统。\n\n"
+      },
+      {
+        "question": "Eureka 的实现原理？",
+        "answer": "✅ 一、Eureka 的核心组成（两大角色）\nEureka Server\t注册中心：负责维护所有服务实例的注册信息\nEureka Client\t客户端：服务提供者或消费者，向 Server 注册、续约、拉取服务\n\n✅ 二、Eureka 的核心流程原理\n✅ 1. 服务注册\n服务启动后，Eureka Client 会向 Eureka Server 发起 POST /eureka/apps/服务名 请求\n包含服务的元数据（如主机名、IP、端口、状态等）\n注册成功后，服务将出现在 Eureka Server 的注册表（registry）\n✅ 2. 服务续约（心跳）\n为了保持服务在线状态，Eureka Client 每隔 默认 30 秒 向 Server 发送一次心跳（PUT 请求）\n如果在 90 秒内（默认配置）未收到续约，Eureka Server 会将该实例标记为 过期\n✅ 3. 服务剔除（Eviction）\nEureka Server 会定期（默认 60 秒）扫描注册表\n对于失效的实例（长时间未续约），会执行剔除，保证注册信息的准确性\n注意：在网络波动或雪崩场景下，Eureka 会开启“自我保护机制”\n✅ 4. 服务发现（拉取注册表）\nEureka Client 会定期从 Server 拉取注册表（GET /eureka/apps），默认每 30 秒\n注册表在本地缓存，客户端实现本地负载均衡（配合 Ribbon）\n\n✅ 三、Eureka 的高可用机制\n✅ 1. Server 集群互相注册（Peer-to-Peer）\n多个 Eureka Server 节点之间会互相注册，实现注册表同步\n每个 Server 都是对等的，无主节点（Peer Replication）\n✅ 2. 客户端可以配置多个 Server\nEureka Client 配置多个 Server 地址，任意一个可用即可完成注册与拉取\n默认采用轮询机制选择 Server\n✅ 3. 自我保护机制（Self-protection）\n高并发或网络异常时，为避免误剔除，Eureka Server 会进入自我保护模式\n具体表现为：即使客户端不续约，Server 也暂不剔除实例，保证系统可用性优先（AP 模型）\n\n总结：Eureka 的实现原理是基于客户端与 Server 的注册 + 心跳 + 拉取 + 剔除机制构建的服务发现体系，具有 高可用、易集成、支持自我保护 等特点，适合内网微服务环境\n\n-- 追问 --\n1.Eureka 是 CP 还是 AP？\t\nAP，牺牲一致性，保证可用性和分区容错性\n2.自我保护机制是如何触发的？\n续约比例低于阈值（默认85%）时触发\n3.注册表数据如何同步？\nServer 之间 Peer Replication，同步注册数据\n4.Client 拉取是全量还是增量？\n初次全量，之后支持增量拉取\n"
+      },
+      {
+        "question": "nacos 的namespace 是什么",
+        "answer": "在 Nacos 中，namespace（命名空间） 是用于实现配置和服务的多环境隔离的一个逻辑单位。\n\n它允许我们在同一个 Nacos 实例中，创建多个“环境空间”，从而达到不同环境之间配置和服务的隔离管理。\n\n--- 追问 --\n1.namespace 和 group 有什么区别？\nnamespace 负责“环境级隔离”，group 更偏向“业务分组管理”\n2.多服务之间能否共享 namespace？\n可以，一个 namespace 下可以有多个服务\n3.namespace 能做权限控制吗？\n可以，Nacos 支持对 namespace 维度的 读写权限控制（RBAC）\n4.namespace 的 ID 是怎么配置的？\n控制台自动生成，也可以手动设置，Spring Boot 中通过配置项指定\n"
+      },
+      {
+        "question": "spring cloud 有哪些注册中心?",
+        "answer": "在 Spring Cloud 架构中，常见的注册中心有 Eureka、Nacos、Consul、Zookeeper、Etcd 等，选择哪一个取决于你的部署环境、系统规模、配置中心需求和一致性要求。\n我们项目使用的是 Nacos，它不仅支持服务注册发现，还集成了配置中心，配合 Spring Cloud Alibaba 使用起来非常方便，支持动态配置、健康检查、命名空间隔离等功能"
+      },
+      {
+        "question": "Nacos相比Config的优势？",
+        "answer": "Nacos 相比 Spring Cloud Config 最大的优势在于它集成了配置中心和服务注册中心，并且支持更丰富的功能。比如配置支持可视化管理，修改后可以实时生效，无需依赖 Git 仓库。Nacos 还支持多 namespace 和 group 的隔离，方便管理多环境或多租户的配置。权限控制方面也比 Config 更强，能做到粒度更细的控制。在实际项目中我们使用 Nacos 来管理微服务的配置，结合 Spring 的 @RefreshScope 实现了配置热更新，效果比原来的 Config Server 更稳定也更好维护。"
+      },
+      {
+        "question": "Nacos如何同时作为注册中心和配置中心？",
+        "answer": "Nacos 是一个同时支持服务注册/发现和配置管理的统一平台。在 Spring Cloud 中我们通过配置 nacos.discovery 来实现服务注册，通过 nacos.config 来远程拉取动态配置。服务注册后可通过 Feign 或 RestTemplate 进行调用；配置管理则通过 DataId + Group 实现，结合 @Value 和 @RefreshScope 实现配置动态刷新。"
+      },
+      {
+        "question": "nacas 作为配置中心的实现原理？",
+        "answer": "Nacos 作为配置中心，主要实现了 配置的集中管理、动态推送和监听机制。\n\n1. 配置存储：\n配置以 Data ID + Group 的形式存储在 Nacos Server 中\n本质上是一个 Key-Value 配置管理系统，支持多环境和多集群管理\n2. 客户端获取配置：\nSpring Cloud Alibaba 项目启动时，通过 Nacos Config Client 从 Server 拉取配置\n配置加载优先级高于本地 application.yml，支持多 profile（如 xxx-dev.yaml）\n3. 推送机制：\n客户端会通过长轮询或 gRPC 与 Nacos Server 保持连接\n当配置在控制台被修改后，Nacos Server 会主动推送变更通知\n客户端自动刷新 Bean 中的配置（依赖 @RefreshScope 注解）\n\n✅ 二、Spring Cloud 与 Nacos 的整合机制\n项目启动时，Nacos Config Client 会根据 dataId 拼接规则拉取配置\n若配置文件中使用了 @Value 或 @ConfigurationProperties，并加上 @RefreshScope，配置变更将自动生效\n\n✅ 三、Nacos 刷新原理（核心）\n✅ 长轮询机制： 客户端每隔一段时间（默认 30s）向 Nacos Server 发起长连接请求，询问配置是否有变更\n✅ 服务端变更监听： 如果配置被修改，Server 会在下一次轮询中告知客户端\n✅ 客户端刷新： Spring Cloud Alibaba 会通过 ContextRefresher 触发配置刷新事件，刷新对应的 Bean\n\n---- 追问 ----\n1.配置变更会立即生效吗？\n是的，被 @RefreshScope 管理的 Bean 会实时刷新，但需注意线程安全\n2.如何保证配置推送的可靠性？\nNacos 会做版本控制和 MD5 校验，客户端也会做重试机制\n3.多环境配置怎么处理？\n通过命名空间（namespace）+ Group 隔离\n4.使用过程中遇到过什么问题？\n比如配置未刷新，是因为漏加了 @RefreshScope，或 Nacos Server 未同步成功"
+      },
+      {
+        "question": "为什么需要服务注册发现？",
+        "answer": "在微服务架构下，每个服务通常会有多个实例，并且服务实例的数量和地址会随着扩缩容、升级、故障等动态变化。如果手动维护服务地址，既繁琐又容易出错，而且难以应对动态变化。\n\n服务注册与发现机制解决了这个问题。服务启动后自动将自己的信息注册到注册中心，其他服务通过注册中心动态获取目标服务的最新可用实例，实现了服务之间的自动发现和负载均衡，也提升了系统的高可用性和扩展性。\n\n总结来说，服务注册与发现的目的是让微服务能够自动、动态地找到彼此，简化运维，提高可靠性和扩展性。"
+      },
+      {
+        "question": "你们用的配置中心是什么？如何实现配置热更新？",
+        "answer": "我们项目中使用的是 Nacos 作为配置中心，它支持配置的集中管理、版本控制和动态刷新。在 Spring Cloud 项目中我们通过配置 nacos.config 来连接 Nacos，然后通过 @Value 注入配置项，配合 @RefreshScope 注解实现配置的热更新。比如我在实际项目中修改了日志级别或限流阈值配置，不用重启服务，几秒内就能生效，这对于线上环境非常有帮助。我们也使用 namespace 和 group 实现了多环境隔离。"
+      },
+      {
+        "question": "什么是配置中心？有哪些常见的配置中心",
+        "answer": "配置中心是指一种集中式的配置管理系统，用于统一管理和分发应用的配置信息。它可以帮助我们实现配置的集中管理、动态更新和环境隔离，减少因配置分散导致的维护成本和出错概率。\n\n常见的配置中心有：\n\nSpring Cloud Config，适合Spring生态项目；\nApollo，功能丰富，支持权限管理和热更新；\nNacos，支持服务发现和配置管理，适合微服务架构；\n另外还有Consul、etcd等也可以用于配置管理。\n使用配置中心可以让我们在不重启服务的情况下修改配置，提高了系统的灵活性和可维护性。"
+      },
+      {
+        "question": "微服务负载均衡的实现方式有哪些",
+        "answer": "微服务常见的负载均衡实现方式\n客户端负载均衡（Client-Side Load Balancing）\nRibbon（老版）：Spring Cloud Netflix 提供的客户端负载均衡组件（已弃用）\nSpring Cloud LoadBalancer（新版）：Spring 官方替代 Ribbon 的新方案，支持多种策略\nFeign + LoadBalancer ：Feign 内部整合 Spring Cloud LoadBalancer 实现调用分发\nRestTemplate + LoadBalancer ： RestTemplate + @LoadBalanced 注解实现\n\n二、常见负载均衡算法策略\n轮询（Round Robin）\t请求轮流分发到每个实例\n随机（Random）\t请求随机选择一个实例\n权重轮询\t根据服务权重分配请求比例\n最少连接数\t分发到当前连接数最少的实例\n一致性哈希\t保证相同请求落到相同节点（常用于缓存）\n自定义策略\t结合业务场景自定义（如地域、用户维度）\n\n实际项目：\n使用的是 Spring Cloud Alibaba + Nacos + Spring Cloud LoadBalancer 进行客户端负载均衡。服务注册到 Nacos 后，客户端（Feign）通过 LoadBalancer 自动选择一个服务实例发起请求，默认使用的是轮询策略。\n\n--- 追问 --\n1.Ribbon 和 LoadBalancer 有什么区别？\nRibbon 是早期方案，已弃用；LoadBalancer 是官方推荐的新方案\n2.如何自定义负载均衡策略？\n实现 ReactorServiceInstanceLoadBalancer 接口，自定义选择逻辑\n3.Feign 是怎么实现负载均衡的？\n内部集成了 LoadBalancer，每次请求自动选择一个服务实例\n4.K8s 的负载均衡如何实现？\n基于 kube-proxy 和 iptables/ipvs 实现 Round Robin\n"
+      },
+      {
+        "question": "Hystrix与Sentinel的核心区别？",
+        "answer": "Hystrix与Sentinel的核心区别在于设计定位和功能特性。Hystrix侧重服务容错，通过熔断和隔离防止雪崩，但缺乏动态规则和流量控制能力；而Sentinel以流量治理为核心，支持QPS限流、熔断、系统自适应保护，并提供实时监控和动态规则配置。例如，Sentinel可以精确控制秒杀接口的并发流量，而Hystrix只能熔断或降级。此外，Sentinel与云原生组件集成更紧密，适合高并发和精细化治理场景"
+      },
+      {
+        "question": "Spring Cloud Config如何实现配置热更新？",
+        "answer": "Spring Cloud Config 提供了集中式配置管理功能，支持将配置存储在 Git、SVN 或本地文件中，客户端应用启动时会从配置中心拉取配置。\n\n\n要实现配置的热更新，主要依赖于 Spring Cloud Bus 与 @RefreshScope 注解的配合使用。\n\n\n首先，我们在需要动态刷新的 Bean 或配置类上添加 @RefreshScope，这样当配置更新时，该 Bean 会被重新加载。\n然后，引入 Spring Cloud Bus + 消息中间件（如 RabbitMQ、Kafka），它可以实现配置变更后的全局广播刷新机制。\n当我们通过调用 Config Server 的 /actuator/refresh 或 /actuator/bus-refresh 接口时，Config Server 会通知所有客户端刷新配置。\n\n简单来说，配置热更新的流程就是：修改 Git 配置 → 提交 → 推送 → 通知 Config Server → Config Server 通过消息总线广播刷新事件 → 客户端自动刷新生效。\n\n\n在实际项目中，我们通常配合 Git Webhook 自动触发 /actuator/bus-refresh，实现配置改动自动热更新，提升配置管理的效率与准确性\n\n不一定需要消息中间件，如果不引入 Spring Cloud Bus + 消息中间件，我们依然可以通过手动调用客户端的 /actuator/refresh 接口，实现局部配置热更新。\n\n\n也就是说：\n\n\n没有消息中间件：只能手动刷新，每次刷新一个服务实例\n有消息中间件（Bus）：可以广播刷新，所有客户端自动更新\n\n所以，是否引入消息中间件，取决于系统规模和自动化需求。对于小型项目，手动刷新也能满足；但对于大型微服务系统，推荐使用 Bus 实现自动广播刷新。"
+      },
+      {
+        "question": "Spring Cloud如何实现灰度发布？",
+        "answer": "在 Spring Cloud 中实现灰度发布，我们通常结合 Gateway 和 Nacos 实现。具体做法是在 Gateway 中根据请求头或参数进行路由判断，比如请求头中带有 version=beta 就路由到带有对应 metadata 的服务实例。同时在 Nacos 注册服务时，我们会给实例打上版本标签。必要时我们也会自定义负载均衡策略，让客户端自动识别不同版本的实例。这种方式可以按用户、IP、Header 等维度做精细化流量控制，实现真正的灰度发布。"
+      },
+      {
+        "question": "OpenFeign的工作原理是什么？",
+        "answer": "OpenFeign基于动态代理实现声明式HTTP调用。开发者通过接口和注解定义远程服务，启动时OpenFeign生成代理类，解析注解并构建请求模板。调用接口方法时，结合负载均衡器（如Ribbon）选择实例，通过编码器序列化参数、发送HTTP请求，最后解码响应结果。例如，@FeignClient注解声明服务名，方法上的@GetMapping定义具体API路径，使得远程调用像本地方法一样简洁。"
+      },
+      {
+        "question": "feign 和open feign 的区别",
+        "answer": "Feign 是原生的声明式 HTTP 客户端库，而 OpenFeign 是 Spring Cloud 对 Feign 的增强版，**在实际微服务项目中，我们几乎都是使用 OpenFeign 它集成了 Spring MVC 注解、负载均衡、熔断限流等功能，更适合生产环境使用。\n\n-- 追问 --\n1.Feign 支持哪些 HTTP 方法？\nGET、POST、PUT、DELETE 等\n2.OpenFeign 如何实现负载均衡？\n默认整合 Spring Cloud LoadBalancer 或 Ribbon\n3.OpenFeign 支持参数校验吗？\n支持，可以配合 @Validated 使用\n4.Feign 和 RestTemplate 的区别？\nFeign 是声明式，RestTemplate 是命令式；Feign 更简洁，支持自动负载均衡"
+      },
+      {
+        "question": "如何解决Feign调用时的超时问题？",
+        "answer": "Feign 调用超时通常是因为目标服务响应慢或网络阻塞。解决方法主要有两方面：一是通过配置 connectTimeout 和 readTimeout 来调整超时时间，避免误判服务超时；二是从服务端优化接口响应时间，避免 IO 阻塞。在 Spring Cloud 中我会在 application.yml 里为不同服务配置不同的超时策略，如果业务要求更稳定还会加上 Hystrix  做超时熔断处理，保障系统整体可用性"
+      },
+      {
+        "question": "Sentinel的流量控制规则有哪些类型？",
+        "answer": "Sentinel 支持两种主要的流控模式：一种是基于 QPS 的限流，另一种是基于线程并发数的限流。其中 QPS 是最常用的方式，可以设置每秒最多处理多少请求。除了限流阈值本身，Sentinel 还提供了三种流控效果：直接拒绝、Warm Up（冷启动预热）和匀速排队（固定速率漏桶算法）。这些规则可以根据请求来源维度精细化设置。实际使用中我们经常用 Sentinel 来对外部接口或热点资源做流控，避免突发流量冲垮服务。"
+      },
+      {
+        "question": "什么是限界上下文（Bounded Context）？DDD 怎么落地？",
+        "answer": "限界上下文是 DDD 中非常核心的概念，它定义了某个业务模型和术语的有效范围。在实际项目中，一个限界上下文通常对应一个微服务，比如订单上下文和用户上下文在模型、数据库、接口上都是独立的。我们通过这种方式避免了模型混乱的问题，也方便多团队协作。我在项目中会结合限界上下文做服务拆分，确保每个服务职责单一，同时通过接口或消息队列与其他上下文交互，保持系统的可扩展性和灵活性。"
+      },
+      {
+        "question": "Spring Cloud Gateway 你用来做了哪些事情？",
+        "answer": "在我们的微服务架构中，Spring Cloud Gateway 主要承担了请求路由、统一认证鉴权、限流熔断和异常处理等工作。我们在网关层实现了基于 JWT 的用户鉴权，对不同的路由设置限流规则，避免突发请求冲垮服务。同时也处理了跨域请求、打印统一日志、封装异常响应等功能。通过将这些通用能力集中在网关层，我们降低了业务服务的复杂度，也提高了系统的可维护性和可扩展性。"
+      },
+      {
+        "question": "OpenShift 和 Kubernetes 有什么不同？你遇到过哪些问题？",
+        "answer": "OpenShift 是基于 Kubernetes 的企业级容器平台，提供了更完整的权限控制、内置 Web 控制台、CI/CD 支持等功能。相比 Kubernetes，它在安全性和资源隔离上做了更多限制，比如默认不允许 root 镜像运行，也限制了镜像来源。在使用中我遇到过容器启动失败的问题，最后通过配置 SCC（如绑定 anyuid 权限）解决；另外也碰到过拉取私有镜像失败，需要配置 imagePullSecret。我认为 OpenShift 更适合企业团队协作和安全敏感型项目，但部署和权限管理要更谨慎。"
+      },
+      {
+        "question": "有没有遇到某个服务雪崩？是怎么排查的？",
+        "answer": "在高并发场景下因为服务不可用导致接口全部阻塞，最终连网关都被打满。我通过监控和日志分析，发现线程池被卡死，RPC 调用超时没有降级处理。我们紧急加了 Sentinel 熔断规则，快速恢复服务；后续我们对所有核心接口增加了限流、熔断和降级策略，并完善了链路追踪和告警体系。这次经历让我意识到服务保护机制的重要性，也提升了我对故障排查和系统稳定性的认知。"
+      },
+      {
+        "question": "你是怎么理解微服务的",
+        "answer": "在我看来，微服务是一种将大型系统拆分为一组小服务、每个服务聚焦单一业务能力、可独立开发部署的架构模式。它让系统更加灵活、可扩展，也便于团队协作和技术演进。虽然带来了分布式系统的复杂性，但通过一系列治理手段，可以显著提升系统的可维护性和创新速度。微服务非常适合需要快速发展、快速响应业务变化的项目\n\n"
+      },
+      {
+        "question": "为什么需要在微服务中使用链路追踪？Spring Cloud 可以选择哪些微服务链路追踪方案？",
+        "answer": "微服务链路追踪能让你在复杂调用链下快速定位问题，提高可观测性。Spring Cloud常用的链路追踪方案有Sleuth+Zipkin、Jaeger、SkyWalking和OpenTelemetry等。"
+      },
+      {
+        "question": "什么情况下需要使用分布式事务，有哪些方案？",
+        "answer": "当一次业务操作涉及多个微服务、多个数据库时，需要保证所有操作要么全部成功，要么全部失败，这时就需要分布式事务，比如订单下单、账户扣款、库存扣减等跨服务操作。\n\n常见的分布式事务解决方案有：两阶段提交（2PC/XA）、TCC模式、本地消息表/可靠消息最终一致性、SAGA补偿事务等。现在主流微服务项目里，Seata是很常见的开源分布式事务中间件，支持多种模式，能很好地解决分布式事务问题。\n\n具体选型要根据业务对一致性和性能的要求，以及团队开发复杂度来权衡。"
+      },
+      {
+        "question": "微服务架构是怎么做日志收集的？",
+        "answer": "我们的微服务架构日志收集主要是：各服务统一输出日志，使用Filebeat/Fluent Bit等采集日志，然后汇总到Elasticsearch做存储和检索，通过Kibana进行可视化分析，同时结合链路追踪工具方便排查问题，历史日志则定期归档。"
+      },
+      {
+        "question": "Seata 框架有没有局限的和缺点",
+        "answer": "Seata 作为分布式事务中间件，虽然解决了微服务下的数据一致性，但也有一些局限，比如性能开销较大、对数据库兼容性有要求、高并发下全局锁可能影响吞吐量、复杂业务场景下自动补偿能力有限、以及与微服务的集成有一定门槛等。因此，在业务选型时要根据实际场景权衡使用。"
+      },
+      {
+        "question": "Seate 都有什么模式，实际项目用AT 模式起到了什么作用",
+        "answer": "我在项目中有使用过 Seata 来解决微服务架构下的数据一致性问题。Seata 提供了三种主流的事务模式：\n\nAT 模式（自动事务）：基于本地事务 + 数据源代理，适用于关系型数据库，开发成本低；\nTCC 模式：显式地定义 Try / Confirm / Cancel 三个阶段，适用于对事务粒度要求较高的场景；\nSAGA 模式：用于长事务，通过定义正向和补偿操作来实现最终一致性，适合周期长、操作多的业务流程。\n我们项目中使用的是 AT 模式，因为它对开发者几乎是无侵入的，只需要在分布式事务方法上加 @GlobalTransactional 注解，Seata 会自动拦截 SQL，记录 undo 日志，保证多个服务间的事务一致性。"
+      },
+      {
+        "question": "Seata 模式的AT 模式在实际中采用了什么具体机制",
+        "answer": "Seata 的 AT 模式 它通过“自动代理数据库事务”的方式来实现服务间的数据一致性。AT 模式的核心机制:\n一阶段提交业务数据 + 记录镜像数据（Undo Log）\n二阶段根据全局事务状态决定是否回滚"
+      },
+      {
+        "question": "什么是API 网关，有什么作用？spring cloud 可以选择哪些网关",
+        "answer": "API 网关（API Gateway） 是客户端与后端微服务之间的 统一入口。所有外部请求都先通过网关，然后由网关根据路由规则将请求转发到具体的服务。\n🧩 API 网关的核心作用：\n功能\t说明\n统一路由转发\t根据 URL、请求头等信息将请求转发到对应微服务\n服务聚合\t聚合多个微服务接口，返回一个统一响应\n认证与鉴权\tJWT、OAuth2、用户身份校验等\n流量控制\t限流、熔断、降级、重试等\n日志与监控\t统一记录访问日志，集成链路追踪\n跨域处理（CORS）\t网关层统一处理跨域请求\n协议转换\t支持 HTTP → gRPC、WebSocket 等协议转换\n\n✅ 二、为什么微服务架构需要 API 网关？\n微服务数量多，接口分散，客户端难以直接访问\n安全、限流、认证等逻辑需要统一处理\n可以隐藏微服务内部实现，暴露统一 API\n提高系统的可扩展性和可维护性\n\n✅ 三、Spring Cloud 可选的 API 网关组件有哪些？\n网关名称\t简介\tSpring Cloud 支持\t状态\nZuul\tNetflix 开源，Spring Cloud 早期默认网关\t✅ 强支持（Spring Cloud Netflix）\t❌ 已弃用\nSpring Cloud Gateway\tSpring 官方推出的网关组件（替代 Zuul）\t✅ 官方主推\t✅ 推荐使用\nNginx\t传统高性能反向代理服务器\t⛔️ 非 Spring 项目\t适合边界网关\nKong / APISIX / Traefik\t第三方 API 网关解决方案\t⛔️ 需单独部署\t企业级可选\nIstio Ingress Gateway\t服务网格网关，基于 Envoy 实现\t⛔️ 服务网格架构使用\t云原生场景\n\n\n-- 追问 --\n1.网关如何实现限流？\n通过 Gateway 内置的 Redis 限流过滤器（如 Token Bucket）\n2.网关如何做鉴权？\n在请求前添加自定义过滤器，校验 JWT/OAuth2 Token\n3.多个微服务接口如何聚合？\n使用网关聚合请求，或者在 BFF 层组合返回数据"
+      }
+    ],
+    "设计模式": [
+      {
+        "question": "单例模式有几种实现？如何保证线程安全",
+        "answer": "单例模式有多种实现方式，如饿汉式、懒汉式、双重检查锁（DCL）、静态内部类和枚举方式。其中静态内部类和枚举方式是最推荐的，既能懒加载又能保证线程安全。要保证线程安全，可使用 synchronized、volatile 或利用类加载机制。枚举单例还天然防止反序列化和反射攻击，是最完美的单例实现。\n\n-- 追问--\n单例怎么实现懒加载？\t懒汉式、静态内部类、DCL\n如何保证单例线程安全？\tsynchronized、volatile、类加载机制、枚举\nvolatile 为什么要用在 DCL 中？\t防止指令重排序\n枚举单例的优点？\t简洁、线程安全、反序列化安全、防反射"
+      },
+      {
+        "question": "设计模式分哪三大类",
+        "answer": "设计模式分为三大类：创建型、结构型和行为型。创建型模式解决对象创建问题，如单例、工厂、建造者等；结构型模式关注类和对象的组合，如适配器、装饰器、代理等；行为型模式关注对象之间的通信与职责分配，如策略、观察者、模板方法等。这三大类设计模式帮助我们写出高内聚、低耦合、可扩展的优雅代码。"
+      },
+      {
+        "question": "单例模式是什么？有什么使用场景",
+        "answer": "单例模式是创建型设计模式之一，目的是保证一个类在系统中只有一个实例，并提供全局访问点。常见实现方式包括饿汉式、懒汉式、双重检查锁和静态内部类，推荐使用静态内部类方式。单例模式常用于配置管理、日志系统、数据库连接池等需要共享资源的场景。在多线程环境下，注意线程安全问题。\n\n--追问--\n什么是单例模式？\t一个类只创建一个实例，全局共享\n单例模式有哪些实现方式？\t饿汉式、懒汉式、DCL、静态内部类\n哪种实现最推荐？为什么？\t静态内部类，线程安全 + 延迟加载\n单例模式的应用场景有哪些？\t配置管理、日志系统、连接池等\n单例模式有哪些缺点？\t不易测试、不易扩展、潜在线程安全问题"
+      },
+      {
+        "question": "最常见的几种设计模式，说说应用场景",
+        "answer": "✅ 1. 单例模式（Singleton Pattern）\n🧠 定义：\n确保一个类只有一个实例，并提供一个全局访问点。\n\n🎯 应用场景：\n配置管理类（如读取配置文件）\n日志管理器（如 LogManager）\n数据库连接池（如 Druid、HikariCP）\n缓存实例（如 Redis 客户端）\nSpring 中默认的 Bean 是单例（@Scope(\"singleton\")）\n✅ 2. 工厂模式（Factory Pattern）\n🧠 定义：\n将对象创建与使用解耦，统一管理和控制对象的创建过程。\n\n🎯 应用场景：\nJDBC 中的 Connection conn = DriverManager.getConnection(...)\n日志框架中的 LoggerFactory.getLogger(...)\nSpring Bean 的创建（IoC 容器本质是一个工厂）\n需要根据配置或条件创建不同对象的场景\n✅ 3. 策略模式（Strategy Pattern）\n🧠 定义：\n定义一系列算法，把它们封装起来，使它们可以互相替换。\n\n🎯 应用场景：\n多种支付方式（微信、支付宝、银联）\n订单排序策略（价格、销量、评分）\n商城优惠策略（打折、满减、返现）\nSpring 中的 @Transactional 内部就是策略模式\n✅ 4. 模板方法模式（Template Method Pattern）\n🧠 定义：\n定义算法骨架，将部分步骤延迟到子类实现。\n\n🎯 应用场景：\nJDBC 中的 JdbcTemplate\nSpring 中的 AOP、事务管理\n抽象类中定义通用流程，子类实现具体步骤\n游戏开发中：模板方法定义攻击流程，子类实现不同攻击方式\n✅ 5. 观察者模式（Observer Pattern）\n🧠 定义：\n对象之间一对多依赖，一个对象状态改变时通知所有依赖它的对象。\n\n🎯 应用场景：\n事件驱动系统（如监听器、发布订阅）\nGUI 系统中的事件响应（按钮点击）\n消息队列（MQ）中的订阅者\nSpring 中的 ApplicationEventPublisher 和 @EventListener\n✅ 6. 装饰器模式（Decorator Pattern）\n🧠 定义：\n动态地给对象添加功能，扩展对象功能而不修改其结构。\n\n🎯 应用场景：\nJava IO 中的 BufferedInputStream、DataInputStream\nSpring 中的 Filter 链\n权限校验、日志记录、方法增强\n前后端统一响应结构封装（如加密、签名）\n✅ 7. 代理模式（Proxy Pattern）\n🧠 定义：\n为其他对象提供一个代理以控制对这个对象的访问。\n\n🎯 应用场景：\nSpring AOP（JDK 动态代理 / CGLIB）\nRPC 框架中的远程调用代理（如 Dubbo、Feign）\n缓存代理（先查缓存再查数据库）\n安全代理（权限判断）\n✅ 8. 建造者模式（Builder Pattern）\n🧠 定义：\n将一个复杂对象的构建与表示分离，使同样的构建过程可以创建不同的表示。\n\n🎯 应用场景：\n创建复杂对象（如 JSON、HTML 报文）\n链式调用（如 StringBuilder、Lombok @Builder）\n导出报表、构建游戏角色等复杂对象组装过程\n✅ 9. 适配器模式（Adapter Pattern）\n🧠 定义：\n将一个类的接口转换成客户端期望的另一个接口。\n\n🎯 应用场景：\n数据库驱动适配（如 JDBC Driver）\n使用第三方接口时做统一封装\n旧系统与新系统对接时的兼容层\nSpring MVC 中的 HandlerAdapter\n✅ 10. 责任链模式（Chain of Responsibility Pattern）\n🧠 定义：\n将请求沿着处理链传递，链上的每个节点都可以处理请求或将其传递下去。\n\n🎯 应用场景：\nSpring 的 Filter、Interceptor 链\nNetty 的 ChannelPipeline\n表单校验流程\n日志处理链（不同级别日志处理器）"
+      },
+      {
+        "question": "你认为好的代码是怎么样的",
+        "answer": "在我看来，好的代码应该具备高可读性、高内聚低耦合、易扩展、易测试等特点。比如命名清晰、结构合理、遵循设计原则（如 SOLID 原则）、有适当注释和良好的测试覆盖。同时，好的代码不仅仅关注实现，还关注使用者的体验，是具备“工程思维”的体现。\n\n"
+      },
+      {
+        "question": "一句话概括什么是设计模式？为什么要用？",
+        "answer": "设计模式是前人总结的解决特定问题的最佳实践，帮助我们写出高内聚、低耦合、易维护的代码结构。\n\n✅ 为什么要用设计模式？\n✅ 提升代码复用性（避免重复造轮子）\n✅ 提高可维护性和可扩展性（便于修改和升级）\n✅ 增强团队协作沟通效率（一提“观察者模式”大家都懂）\n✅ 解决通用的软件设计问题（如对象创建、结构适配、行为交互）\n✅ 让架构更清晰、灵活、优雅\n🧠 举个例子：\n如果你总是要在不同模块用到“通知机制”，你可以用“观察者模式”来统一解决；\n如果你想控制对象只能创建一个，就用“单例模式”。"
+      }
+    ],
+    "JVM": [
+      {
+        "question": "jvm 有哪些垃圾回收算法",
+        "answer": "垃圾回收（GC，Garbage Collection）是 JVM 自动管理内存的机制，负责清理堆内存中不再被引用的对象，释放资源，避免内存泄漏和溢出。\nJVM 中常见的垃圾回收算法包括 标记清除、复制、标记压缩、分代收集算法\n\n二、JVM 常见的垃圾回收算法（原理层面）\n🌱 1. 引用计数算法\n每个对象维护一个引用计数器，引用 +1，解除引用 -1\n引用计数为 0 的对象可回收\n❌ 缺点：无法处理循环引用\n✅ 一般用于 非 Java 虚拟机（如 Python），JVM 不采用\n🌿 2. 标记-清除算法（Mark-Sweep）\n🔹 分两步：标记所有存活对象 → 清除未被标记的对象\n❌ 缺点：\n清除后会产生大量内存碎片\n清除速度慢\n✅ 优点：实现简单\n🌾 3. 复制算法（Copying）\n将内存划分为两块（From、To），每次只使用一块\nGC 时将存活对象复制到另一块，然后清空原区域\n✅ 优点：无碎片、效率高\n❌ 缺点：浪费一半内存空间\n✅ 主要用于 新生代（Minor GC）\n🌳 4. 标记-压缩算法（Mark-Compact）\n改进了标记-清除，标记存活对象后将其压缩到一端\n✅ 减少碎片\n❌ 效率低于复制算法\n✅ 常用于 老年代（Major GC）\n🌲 5. 分代收集算法（Generational GC）\nJVM 中最常用的垃圾回收策略\n将堆内存划分为：\n新生代（Young Generation）：对象生命周期短，采用 复制算法\n老年代（Old Generation）：对象存活时间长，采用 标记-压缩算法\n✅ 结合多种算法进行优化，是现代垃圾回收器的核心思想\n\n-- 追问 --\nCMS 和 G1 有什么区别？\tCMS 是老年代并发标记清除，G1 是分区回收，支持全堆并发、低停顿\n为什么新生代使用复制算法？\t新生代对象生命周期短，存活率低，复制成本低\nG1 为什么叫 Garbage First？\t优先回收垃圾最多的区域，提高效率\nZGC 停顿时间为什么低？\t所有阶段几乎都在并发执行，避免 Stop-The-World\n\n"
+      },
+      {
+        "question": "jvm 由哪些部分组成",
+        "answer": "JVM（Java 虚拟机）主要由以下几个核心部分组成：\n\n1.类加载子系统（Class Loader Subsystem）\n负责将 .class 文件加载到 JVM 中\n包括：加载、验证、准备、解析、初始化 等过程\n支持双亲委派模型，防止类重复加载\n\n2.运行时数据区（Runtime Data Area）\nJVM 在运行时划分的内存结构，主要包括：\n程序计数器（PC Register）：每个线程私有，记录当前线程执行的字节码行号\nJava 虚拟机栈（JVM Stack）：栈帧结构，保存方法调用信息、局部变量等\n本地方法栈（Native Method Stack）：用于执行 native 方法\n堆（Heap）：所有对象和数组分配的内存区域，垃圾回收的主要区域\n方法区（Method Area）：保存类的元信息，如常量池、静态变量、类结构等（JDK8 后被元空间取代）\n\n3.执行引擎（Execution Engine）\n将字节码翻译成机器码执行\n包括：解释器、即时编译器（JIT）、垃圾回收器（GC）\n\n4.本地接口（Native Interface）\n用于调用 C/C++ 编写的 native 方法，比如通过 JNI 接口调用系统级资源\n\n5.Java 本地库（Native Method Libraries）\n提供 JVM 调用操作系统底层 API 所需的库，如 IO、网络、图形等功能的 native 支持"
+      },
+      {
+        "question": "JVM 的内存区域是如何划分的？",
+        "answer": "✅ 标准回答结构：\nJVM 在运行 Java 程序时，会将内存划分为多个区域，这些区域统称为 运行时数据区（Runtime Data Area），主要包括以下几部分：\n\n1. 程序计数器（Program Counter Register）\n每个线程私有\n记录当前线程正在执行的字节码指令地址（行号指示器）\n如果执行的是 native 方法，则该计数器为空\n🟢 面试点：线程隔离性，不会有线程安全问题\n\n2. Java 虚拟机栈（JVM Stack）\n每个线程私有，生命周期随线程创建/销毁\n存储栈帧（Stack Frame）：方法调用的局部变量表、操作数栈、动态链接、方法返回地址等\n发生栈溢出（StackOverflowError）时，多为递归调用过深\n🟢 面试点：方法调用的基础结构\n\n3. 本地方法栈（Native Method Stack）\n也称为 C 栈，支持 JVM 调用 native 方法（如 C/C++）\n类似于 JVM 栈，但服务于 native 方法\n抛出：StackOverflowError / OutOfMemoryError\n4. 堆（Heap）\n所有线程共享\n存储对象实例和数组，是垃圾回收的主要区域\n逻辑上划分为：\n新生代（Young Generation）\nEden 区 + 两个 Survivor 区（S0/S1）\n老年代（Old Generation）\nJDK8 之前还有永久代（PermGen），JDK8 后改为元空间（MetaSpace）\n🟢 面试点：GC 的主要工作区域\n\n5. 方法区（Method Area）\n所有线程共享\n存储类的元信息、常量池、静态变量、JIT 编译后的代码等\nJDK8 开始由 元空间（MetaSpace） 替代，使用本地内存（而非 JVM 堆）\n🟢 面试点：类加载、JDK8 的 MetaSpace 替代 PermGen\n\n6. 运行时常量池（Runtime Constant Pool）\n属于方法区的一部分\n存放编译期生成的各种常量（字符串字面量、类引用等）\n支持运行时动态添加常量\n🟢 面试点：String.intern()、OOM（OutOfMemoryError）\n\n"
+      },
+      {
+        "question": "jvm 有几种情况会产生OOM",
+        "answer": "JVM 中常见的 OOM 情况主要有 6 种，比如最常见的 Java heap space 是由于堆内存不足引起的，像创建太多对象、缓存未清理等都会导致；还有 GC overhead limit exceeded 表示频繁 GC 却回收不到内存；Metaspace 溢出多见于类加载过多，比如热部署场景；Direct buffer memory 是 NIO 直接内存不够；另外还有线程过多无法创建新线程、数组分配过大等情况。\n\n在实际项目中我们可以通过调整 JVM 参数、优化代码结构、使用内存分析工具如 MAT、VisualVM 等来排查和调优。\n\n常见 6 种 OOM 类型 + 触发原因 + 案例说明\n1. Java Heap Space（堆内存溢出）\n异常信息： java.lang.OutOfMemoryError: Java heap space\n原因： 对象创建太多，堆内存不够用，GC 无法回收足够空间\n典型场景：\n大量加载数据到内存（例如缓存、集合）\n死循环创建对象\n大文件读取未释放\n\n2. GC Overhead Limit Exceeded（GC 开销过大）\n异常信息： java.lang.OutOfMemoryError: GC overhead limit exceeded\n原因： 频繁 GC，但是每次回收的内存太少（<2%）\n典型场景：\n内存持续吃紧，GC 在“救火”，但效果很差\nJVM 默认策略：\n如果 GC 超过 98% 的时间回收不到 2% 的内存，就抛出该错误\n\n3. Metaspace / PermGen Space（方法区或元空间溢出）\nJDK8 之前： java.lang.OutOfMemoryError: PermGen space\nJDK8 之后： java.lang.OutOfMemoryError: Metaspace\n原因： 类信息太多，加载 class 过多，方法区或元空间不足\n典型场景：\n使用反射、大量动态生成类（如 CGLIB、JSP）\n热部署频繁（如 Tomcat 不重启不断部署）\n\n4. Direct Buffer Memory（直接内存溢出）\n异常信息： java.lang.OutOfMemoryError: Direct buffer memory\n原因： NIO 分配的直接内存超过了 -XX:MaxDirectMemorySize 限制\n典型场景：\nNetty、NIO 大量使用直接内存\n分配后未释放\n\n5. Unable to create new native thread（无法创建本地线程）\n异常信息： java.lang.OutOfMemoryError: Unable to create new native thread\n原因： 系统层面线程数达到限制（非 JVM 内存不足）\n典型场景：\n创建线程过多，超出操作系统线程限制\n如：无限 new Thread()、线程池配置不当\n\n6. Requested array size exceeds VM limit（数组太大）\n异常信息： java.lang.OutOfMemoryError: Requested array size exceeds VM limit\n原因： 试图分配一个超级大的数组（如 new int[Integer.MAX_VALUE]）\n典型场景：\n程序错误地计算数组大小\n尝试处理超大数据文件时发生\n\n"
+      },
+      {
+        "question": "jvm中堆和栈的区别",
+        "answer": "JVM 中的堆和栈是两种作用不同的内存区域。堆用于存储对象实例，是垃圾回收的主要区域，线程共享；而栈用于保存方法调用的执行信息，是线程私有的，随方法调用而入栈和出栈。"
+      },
+      {
+        "question": "常用的jvm 配置参数",
+        "answer": "JVM 常用配置参数主要包括内存设置（如 -Xmx、-Xms）、GC 选择（如 UseG1GC、PrintGCDetails）、元空间大小、线程栈大小等。我们可以根据项目的内存模型和性能需求，结合 GC 日志进行有针对性的调优。"
+      },
+      {
+        "question": "jvm 垃圾回收调优的目的是什么",
+        "answer": "JVM 垃圾回收调优的核心目的是提升系统性能和稳定性，主要包括以下几个方面：\n\n1.减少 GC 停顿（Stop-The-World）时间\n尽量缩短每次 GC 的暂停时间，降低对业务线程的影响，提升系统响应速度\n\n2.提高吞吐量（Throughput）\n吞吐量 = 程序运行时间 / (程序运行时间 + GC 时间)\n通过优化 GC 策略和内存分配，减少 GC 次数和频率，提升整体效率\n\n3.避免频繁 Full GC 或 OOM\n减少 Full GC 次数，避免系统频繁发生长时间停顿\n防止内存溢出（OutOfMemoryError），确保系统稳定运行\n\n4.提升对象分配与回收效率\n合理设置新生代与老年代大小\n减少对象晋升失败、空间碎片等问题\n\n5.根据业务场景选择合适的 GC 垃圾收集器\n如响应时间敏感型系统选择 G1/ZGC，吞吐量优先系统选择 ParallelGC"
+      },
+      {
+        "question": "如何对垃圾回收调优",
+        "answer": " 一、GC 调优的核心目标\n减少 Full GC 的频率和时间\n缩短 GC 停顿时间（STW）\n提高系统吞吐量\n防止内存泄漏和 OOM\n\n\nGC 调优的关键在于通过日志和工具发现问题，再结合业务场景合理选择 GC 策略和 JVM 参数进行优化，最终通过对比验证调优效果，从而达到减少停顿、提高吞吐、防止 OOM 的目标。"
+      },
+      {
+        "question": "如何对java 进行内存泄漏分析",
+        "answer": "一、什么是 Java 内存泄漏？\n概念： 对象不再被使用，但仍然被引用，导致 GC 无法回收，长期占用内存。\n\n影响： 随着时间推移，内存不断增长，最终可能导致 OutOfMemoryError。\n\n二、如何发现内存泄漏？\n常见表现：\nJVM 堆内存持续增长，GC 后内存无法释放\nFull GC 频繁，系统响应变慢\n出现 OutOfMemoryError\n在线上系统中 CPU 异常升高\n工具观察：\nVisualVM\t实时监控对象数量变化\nJConsole\t内存曲线、GC 行为\nJProfiler / YourKit\t专业内存分析工具\nPrometheus + Grafana\t采集 JVM 指标趋势\nJDK tools（jmap、jstack、jstat）\t快速抓取内存快照与线程栈信息\n\n\n三、如何定位内存泄漏？\n✅ 分析流程：\n1.启动 GC 日志输出\n查看 GC 日志，确认堆内存是否持续增长，GC 后释放效果差。\n2.抓取堆快照（Heap Dump）\n3.使用分析工具打开 .hprof 文件\n4.重点分析内容\nDominators Tree（支配树）：哪些对象无法被 GC 回收，占用最多内存\nRetained Heap：对象连带引用占用的总内存\nGC Roots 路径：查找内存泄漏对象为何未被回收\n类实例数量异常：如 HashMap, ArrayList、ThreadLocalMap 等\n\n四、常见内存泄漏场景（加分项）\n静态集合缓存\t如 static List 持有对象引用\nThreadLocal 未清理\t线程复用导致值对象一直存在\n事件监听器未注销\t注册后忘记取消\n数据库连接/Socket 未关闭\t导致对象无法释放\n自定义缓存未设置过期策略\t缓存对象无限增长\n\n五、如何解决内存泄漏？\n及时清理无用引用（特别是静态变量、ThreadLocal）\n使用弱引用（WeakReference）缓存\n为集合设置最大容量或过期策略\n使用 try-with-resources 自动释放资源\n引入 GC 日志监控 + 内存报警\n\n\n"
+      },
+      {
+        "question": "java 的执行流程",
+        "answer": "Java 程序的执行流程包括：编写源代码 → 编译为字节码 → 类加载 → 字节码验证与初始化 → JVM 解释或编译执行 → 调用本地系统接口\nJava 源码（.java）\n      ↓ 编译\n字节码文件（.class）\n      ↓ 类加载器（ClassLoader）\n      ↓ 字节码验证（Bytecode Verifier）\n      ↓ 解释执行 or JIT 编译（JVM 执行引擎）\n      ↓ 操作系统调用\n\n"
+      },
+      {
+        "question": "解释Java内存模型中堆、栈、方法区的作用，并举例说明什么情况下会发生StackOverflowError和OOM？",
+        "answer": "Java内存模型中，堆用来存所有对象，比如new出来的东西都在这里；栈是每个线程独有的，存方法调用和局部变量，比如递归调用会一直往栈里压帧；方法区存类信息和静态变量，比如静态字符串常量。\nStackOverFlowError通常是因为栈深度爆炸，比如写递归没终止条件，栈帧太多导致撑爆。\nOOM分好几种：堆OOM是对象太多回收不掉，比如写死循环一直new大对象；方法区OOM是类加载太多，比如用CGLIB不停生成代理类； 还有线程太多导致栈OOM，比如无限创造线程。\n简单来说，StackOverFlowError是代码写错了导致调用链太长，OOM是内存真不够用了，得看是堆、方法区还是线程数的问题。"
+      }
+    ],
+    "自我介绍": [
+      {
+        "question": "自我介绍一下（中文）",
+        "answer": "您好，我是朱健华，拥有4年全栈开发经验，擅长从前端交互到后端服务的整体架构设计与落地。熟悉敏捷开发流程，具备独立交付产品的能力，同时注重团队协作与代码质量。\n\n我主攻Java+Vue或react技术栈，具备从0到1搭建系统的经验。曾作为开发小组长推进项目，习惯用流程图+接口文档对齐认知差异。\n\n在汇丰负责隐私计算平台期间，我作为前后端开发负责人主要完成了系统架构搭建，权限管理系统设计，和核心计算任务的调度服务。\n\n我的技术特点是全链路思维,在后端开发时，会优先考虑接口扩展性和前端交互成本；在前端开发时，会主动追溯数据源头，避免过度依赖Mock数据;在团队协作中，习惯用流程图+API文档对齐各方理解。\n\n以上是我的基本情况，谢谢。"
+      },
+      {
+        "question": "自我介绍（英文）",
+        "answer": "Hello, my name is kazama,I graduated from Guangdong University of Technology, majoring in Automation. I have 4 years of full-stack development experience, with a strong focus on end-to-end architecture design and implementation — from frontend interactions to backend services.\nMy core tech stack includes Java on the backend and Vue or React on the frontend. I’ve built several systems from scratch and have also led development teams to drive project delivery. I’m experienced in agile development and capable of independently delivering high-quality, production-ready software. At the same time, I place a high value on teamwork, communication, and code quality.\nDuring my time at HSBC, I worked on the Privacy Computing Platform, where I was responsible for both frontend and backend development. My key contributions included system architecture design, implementing a permission management system, and developing the core computing task scheduling service. I also collaborated closely with cross-functional teams, using flowcharts and API documentation to align understanding and reduce communication gaps.\nMy technical philosophy emphasizes full-stack thinking. On the backend, I focus on designing scalable and maintainable APIs while considering frontend integration costs. On the frontend, I proactively trace data sources to reduce dependence on mock data and improve accuracy. \nThat’s a brief introduction to my background — thank you for the opportunity to speak with you."
+      },
+      {
+        "question": "Can you walk me through how you would design a RESTful API using Spring Boot? What are some best practices you follow?",
+        "answer": "Sure. When designing a REST API with Spring Boot, I start by defining the domain model and relevant DTOs. I use @RestController to expose endpoints, and I often follow a layered architecture – controller, service, and repository.\n\nBest practices I follow include:\n\nUsing proper HTTP methods (GET, POST, PUT, DELETE)\nReturning appropriate status codes\nInput validation using @Valid and exception handling with @ControllerAdvice\nSecuring endpoints with Spring Security if required\nWriting unit and integration tests using JUnit and MockMvc"
+      }
+    ],
+    "项目介绍": [
+      {
+        "question": "介绍一下项目",
+        "answer": "在我主导的汇丰隐私计算平台项目中，我们面对的首要挑战，是合规性与协同计算的矛盾。由于各国法律对数据跨境传输有严格限制，项目目标是让数据“留在本地”，但分析“能跨区域”。为此我们采用了多方安全计算（MPC）和联邦学习的思路来解决业务协同问题，而我主要聚焦在微服务架构设计与核心模块的开发上。\n\n在架构层面，我们基于 Spring Cloud 体系做了细粒度的服务拆分，典型的模块有：权限管理、用户管理、任务调度、场景管理等，服务注册与发现采用 Nacos 实现，确保服务调用灵活可控。\n\n权限模块是整个平台的核心之一，我们做了动态权限控制：当用户角色变更后，权限变更能在 50ms 内生效，背后通过监听事件中心进行权限缓存刷新。认证方面，我们兼容了行内统一认证系统，支持 JWT 和 SAML 双协议，实现真正意义上的单点登录（SSO）。\n\n在开发过程中，一个突出的技术挑战是 任务调度性能问题。\n\n最初版本的调度系统使用了无界队列搭配 CAS 自旋锁机制，在并发量上来后，特别是混合了大量 I/O 密集任务时，容易阻塞 CPU 密集型任务，导致资源争抢，甚至在测试环境出现了 OOM（内存溢出）现象。\n\n为了解决这个问题，我对调度模块进行了重构，关键优化措施包括：\n\n1.线程池隔离，将任务按类型打标签，划分为 I/O 密集型 和 CPU 密集型 两类任务，各自绑定独立线程池，这种做法有效避免了不同类型任务间的资源争抢。\n\n2.引入状态机机制，每个任务绑定一个状态机，明确其状态转换路径（如：Pending → Running → Retry → Fail）。当线程池满载导致任务拒绝执行时，状态机会自动进入“重试”状态。\n\n3.指数退避重试算法\n失败任务采用 指数退避算法进行最多 3 次重试，重试失败后标记为 Fail，同时自动触发邮件或钉钉告警，提醒运维介入。\n\n优化后效果显著：\nIO密集型任务延迟降低约 60%\nCPU密集型任务响应提升 35%\n系统整体内存占用趋于稳定\n平均任务失败率降低超过 50%\n\n\n当前系统已稳定运行，但我认为仍有进一步优化空间：\n任务降级机制：为防止高优任务被低优先级任务阻塞，我们计划加入任务优先级调度，在队列爆满时自动丢弃低优先级任务，或将其转移至 Redis 延迟队列；\n弹性调度能力：结合 Kubernetes HPA 实现任务调度服务的水平伸缩；\n与监控联动：实时展示各类任务的运行状态与失败重试次数，便于快速定位性能瓶颈。\n这个项目对我最大的成长是：不仅在系统架构上实践了服务解耦、调度隔离与高可用设计，还锻炼了我对系统稳定性保障机制的全局思维与落地能力。"
+      },
+      {
+        "question": "如何设计一个高可用的微服务架构并管理其迭代？",
+        "answer": "在实际项目中，我们采用了 Spring Cloud + Nacos + Sentinel 构建微服务体系，服务按业务边界拆分，注册中心与配置中心统一管理。为保证高可用，我们在每个服务间都设置了熔断、降级机制，使用消息队列做异步解耦，同时借助 OpenShift 实现多副本部署和自动扩缩容。服务上线前会通过 GitLab CI/CD 自动构建镜像、部署到测试环境，结合 Prometheus 和 Zipkin 实现服务可观测性监控。我们还会控制每个服务的迭代粒度，保持接口兼容，并配合测试用例、代码审查、接口文档，保障版本上线的稳定性。"
+      },
+      {
+        "question": "项目介绍英文版",
+        "answer": "Hello, my name is Zhu Jianhua. I have 4 years of full-stack development experience, with a strong focus on end-to-end architecture design and implementation — from frontend interactions to backend services.\nMy core tech stack includes Java on the backend and Vue or React on the frontend. I’ve built several systems from scratch and have also led development teams to drive project delivery. I’m experienced in agile development and capable of independently delivering high-quality, production-ready software. At the same time, I place a high value on teamwork, communication, and code quality.\n\nIn the HSBC Privacy Computing Platform project that I led, the primary challenge we faced was the contradiction between compliance and collaborative computing. Due to strict regulations in different countries prohibiting cross-border data transmission, our goal was to keep data local while allowing cross-regional analysis. To achieve this, we adopted Multi-Party Computation (MPC) and Federated Learning as our core approaches to solve the problem of business collaboration. I was mainly responsible for microservice architecture design and core module development.\n\nIn terms of architecture, we adopted the Spring Cloud ecosystem and carried out fine-grained service decomposition. Typical modules include permission management, user management, task scheduling, and scenario management. We used Nacos for service registration and discovery to ensure flexible and controllable service invocation.\n\nThe permission module is one of the core components of the platform. We implemented dynamic permission control: when a user's role is updated, the change can take effect within 50 milliseconds, achieved by listening to the event center and refreshing the permission cache. For authentication, we integrated with the internal unified authentication system, supporting both JWT and SAML protocols, to implement true Single Sign-On (SSO).\n\nDuring development, a major technical challenge was the performance of task scheduling.\n\nThe original version of the scheduling system used unbounded queues combined with CAS spin locks. When concurrency increased, especially with a large number of I/O-intensive tasks, it often blocked CPU-intensive tasks, resulting in resource contention, and even Out of Memory (OOM) issues during stress testing in limited-resource environments.\n\nTo solve this, I refactored the scheduling module. Key optimizations include:\n\nThread pool isolation: Tasks were tagged and categorized as either I/O-intensive or CPU-intensive, and assigned to separate thread pools. This effectively avoided resource contention between different types of tasks.\n\nState machine mechanism: Each task was bound to a state machine with clearly defined state transitions (e.g., Pending → Running → Retry → Fail). When the thread pool was full and rejected tasks, the state machine automatically transitioned the task into a \"Retry\" state.\n\nExponential backoff retry algorithm: Failed tasks were retried up to three times using exponential backoff. If all retries failed, the task was marked as Fail, and an email or alert was triggered to notify operations staff.\n\nThe optimization results were significant:\n\nDelay of I/O-intensive tasks reduced by approximately 60%\n\nResponse time of CPU-intensive tasks improved by 35%\n\nMemory usage became stable due to the use of bounded queues\n\nTask failure rate dropped by more than 50%\n\nThe current system is running stably, but I believe there is still room for further optimization:\n\nTask degradation mechanism: To prevent low-priority tasks from blocking high-priority ones, we plan to introduce a priority-based scheduling strategy, where low-priority tasks are either dropped or moved to a Redis delay queue, with notifications sent to operations staff for risk checks.\n\nElastic scheduling capability: We plan to use Kubernetes HPA to implement horizontal scaling of scheduling services.\n\nMonitoring integration: Real-time visualization of task execution status and retry counts, to quickly locate performance bottlenecks.\n\nThis project has given me significant growth. I not only practiced service decoupling, scheduling isolation, and high-availability design at the system architecture level"
+      },
+      {
+        "question": "提到系统初期使用了 CAS 自旋锁，导致资源竞争问题，请具体说明 CAS 的工作原理及其适用场景？为什么会引发阻塞？",
+        "answer": "CAS（Compare And Swap，比较并交换）是一种无锁并发编程技术，底层是依赖 CPU 的原子指令实现的。\n它的基本思想是：\n\n当我们想更新一个变量时，先读取这个变量的旧值（称为预期值）。\n\n然后和当前内存中的值进行比较，如果两者相同，则把新值写入；\n\n如果不相同，说明有其他线程已经修改了这个值，CAS 操作失败，线程会不断重试。\n\n在 Java 中，CAS 主要通过 Unsafe 类或者 AtomicXXX 系列类来实现，比如 AtomicInteger.compareAndSet()。\n\nCAS 适合用于：\n\n锁竞争较少的场景，比如轻量级计数器、状态标记等；\n\n线程之间的 更新操作简单、逻辑短、冲突概率低 的情形；\n\n它相比 synchronized 等传统互斥锁，开销小、效率高，不会造成线程上下文切换。\n\n我们最初在线程调度中用了基于 CAS 的自旋等待机制，配合无界队列来处理任务抢占逻辑，意图是减少上下文切换，提高性能。\n\n但在实际运行中出现了问题：\n\nI/O 密集任务阻塞时间长，线程抢不到 CPU，会一直自旋重试，导致 CPU 占用飙高；\n\n当任务量增多时，线程间冲突频繁，CAS 失败率高，导致大量线程反复尝试、浪费 CPU 资源；\n\n在资源受限环境下，最终出现了CPU 饱和甚至 OOM 的问题。\n\n后来我们改用了线程池 + 任务隔离的方式，把 I/O 和 CPU 密集任务拆开用不同的线程池调度，结合有界队列控制任务数量，才解决了性能瓶颈问题。\n\n所以 CAS 虽然是无锁高效的一种手段，但并不是万能的，在高冲突、大量竞争或阻塞时间长的场景下反而会引发问题。需要根据具体业务特点选择合适的并发控制策略。"
+      },
+      {
+        "question": "在替换掉 CAS 后使用了线程池隔离，这中间的权衡点是什么？是否考虑过使用 Java 的 StampedLock、Semaphore 等手段？",
+        "answer": "项目初期为了追求“无锁高性能”，我们用了 CAS 结合自旋锁来控制任务调度抢占逻辑。但实际运行发现问题明显：\n\n在并发量大、任务阻塞较多的情况下，CAS 重试失败率高，线程长期自旋会占用大量 CPU 资源；\n\n尤其是遇到 I/O 密集型任务，线程卡住了，其他线程还在不断抢，造成CPU 饱和、任务堆积，甚至 OOM；\n\n整体系统稳定性受到影响，延迟波动非常大。\n\n为了解决上述问题，我们做了线程池隔离优化，主要考虑三点：\n\n将不同类型的任务隔离调度（如 I/O 密集和 CPU 密集），避免资源相互争抢；\n\n使用有界队列控制任务提交量，保护系统资源，防止 OOM；\n\n借助 RejectedExecutionHandler 能灵活处理线程池满载情况，比如将任务打回重试或转入失败队列。\n\n线程池模式更容易做监控和弹性扩展，也便于后期引入任务优先级、超时控制等机制。\n\n我有考虑过 StampedLock 和 Semaphore：\n\nStampedLock 适用于读多写少的场景，但我们这个调度系统本质上是高频写操作 + 强竞争，不适合用乐观读模式；\n\nSemaphore 虽然能做限流，但它控制的是并发访问许可数，不能很好地处理任务分类调度、状态管理、重试机制等需求；\n\n所以综合考虑，线程池隔离 + 状态机调度在这个场景下更通用、更具扩展性，也能兼顾稳定性与性能。\n\n所以我们是从“无锁高性能”出发，经历了“资源竞争瓶颈”，最终回归到可控、隔离、稳定为优先的线程池模型。"
+      },
+      {
+        "question": "你是如何配置 ThreadPoolExecutor 的？各个参数如 corePoolSize、maximumPoolSize、keepAliveTime 是怎么设定的？",
+        "answer": "我在线程池配置上不会直接用默认值，而是根据任务的特性、执行时间和系统硬件资源进行调优。\n我们调度系统中任务分为 I/O 密集型和 CPU 密集型两类，执行耗时差异大，因此我为不同任务类型设置了独立线程池，并分开配置参数。\n\n以 CPU 密集型线程池为例，参数配置如下：\ncorePoolSize\t设置为 CPU 核心数，确保核心线程常驻，提高吞吐\nmaximumPoolSize\t通常是 corePoolSize * 2，作为应急扩容上限，防止极端情况下丢任务\nkeepAliveTime\t设置为 30~60秒，非核心线程在空闲一段时间后自动销毁，避免资源浪费\nworkQueue\t使用 LinkedBlockingQueue（有界队列），队列长度一般是 coreSize * 10\nthreadFactory\t自定义线程命名，便于调试和监控\nhandler\t使用 CallerRunsPolicy 保底兜底，防止任务丢失\n\n配置只是第一步，后续我们通过压测工具（如 JMeter + Grafana）结合实际业务并发情况，对线程池的吞吐量、队列长度、任务平均耗时等指标进行观察，反复调整参数。\n\n此外，我也实现了线程池的指标暴露（线程数、队列长度、任务拒绝次数），用于动态评估是否需要调整 corePoolSize 或切换为动态伸缩线程池（如 ThreadPoolTaskExecutor + HPA）。\n\n总体来说，我不会死记线程池参数，而是根据任务特征和系统环境，结合压测和监控，动态找到一个“可控 + 高效 + 稳定”的参数组合。"
+      },
+      {
+        "question": "为什么选择使用有界队列而非无界队列？对内存的影响如何评估？",
+        "answer": "虽然无界队列（如 LinkedBlockingQueue 默认构造）看起来可以避免线程池任务被拒绝，但它会带来不可控的内存风险。\n\n因为线程池一旦队列填满了，线程数不会再增加，而是继续把任务堆积到队列中，只要任务生成速度 > 消费速度，队列就会无限增长，最终可能导致：\n\n堆内存占满 → Full GC频繁 → OOM\n\n应用响应变慢 → 拖垮整个服务\n\n所以在我们的项目中，我统一使用了有界的 LinkedBlockingQueue 或 ArrayBlockingQueue，并根据任务类型估算合适的队列长度。例如：\n\n对于 CPU 密集任务，我们设置队列长度为 corePoolSize * 2 ~ 4；\n\n对于 I/O 密集任务，因吞吐量大，队列长度会设置得稍长，比如 corePoolSize * 10。\n\n有界队列的好处是：\n\n可以有效限制系统最大可承载任务量；\n\n在线程池饱和时触发 RejectedExecutionHandler，我们可以决定是降级、丢弃、转重试队列或告警，这样系统更可控。\n\n\n在线上环境，我主要通过以下几种方式监控有界队列对内存的影响：\n\n暴露线程池的 queueSize、activeCount、rejectedCount 等指标到 Prometheus；\n\n结合堆内存监控（如 Metaspace、Old Gen 使用率）判断是否需要调整线程池大小或限流策略；\n\n在压测阶段对比不同队列大小的响应时间和内存波动，找到最优值。\n\n\n所以无界队列风险在于“无限堆积不可见”，而有界队列让系统有“自保护能力”。线程池能否跑得稳，关键在于队列对系统压力的承接能力是“有限可控”的。"
+      },
+      {
+        "question": "是否使用了拒绝策略（如CallerRunsPolicy、DiscardPolicy等）？怎么处理线程池满载情况下的任务？",
+        "answer": "Java 的 ThreadPoolExecutor 提供了四种内置的拒绝策略：\n\nAbortPolicy：默认策略，直接抛出 RejectedExecutionException；\n\nCallerRunsPolicy：由调用者线程自己执行该任务，相当于回退压力；\n\nDiscardPolicy：悄悄丢弃任务，不抛异常；\n\nDiscardOldestPolicy：丢弃队列中最早的一个任务，然后尝试提交当前任务。\n\n实际项目中要根据业务需求和容忍度来选，不能盲用默认。\n\n在我们调度系统中，我主要选择了 CallerRunsPolicy，原因是：\n\n我们希望优先保证任务不丢失，哪怕当前线程池已经饱和；\n\nCallerRunsPolicy 能将部分执行压力退回到调用方线程，虽然可能会阻塞调用者，但能保护线程池不进一步恶化；\n\n而且在压测中验证过，在合理配置 corePoolSize 和队列长度的情况下，退回压力是可控的。\n\n除了配置拒绝策略，我们还做了以下容错设计：\n\n异步告警：当线程池出现拒绝次数飙升，系统自动发送钉钉或邮件提醒；\n\n降级处理：对于非关键任务，如果被拒绝，就打标签转入 Redis 延时队列，后续再重试；\n\n监控指标：暴露线程池的 rejectedCount、queueSize、活跃线程数等指标，实时观察系统压力；\n\n分级线程池：将不同优先级的任务分发到不同线程池，避免核心任务被低优先级任务拖垮。\n\n所以线程池的拒绝策略不只是“选一个策略”这么简单，更重要的是结合业务特性制定对应的应急方案和监控机制，才能保证系统稳定性和任务的最终可达性。\n"
+      },
+      {
+        "question": "任务重试用到了指数退避算法，是用 ScheduledExecutorService 实现的吗？如何避免重复提交任务？",
+        "answer": "我们系统的任务执行有失败重试机制，为了避免任务失败后瞬间高频重试导致系统雪崩，我们引入了指数退避算法（Exponential Backoff）：\n\n第 1 次失败后延迟 2 秒重试；\n\n第 2 次失败延迟 4 秒；\n\n第 3 次失败延迟 8 秒……最多重试 3 次。\n\n这样可以降低系统瞬时压力，让资源有时间恢复。\n\n实现上，我们用的是 ScheduledExecutorService 来调度重试任务，配合状态机机制控制：\n\n每个任务绑定一个状态：Pending → Running → Retry → Failed；\n\n当任务失败时，我们将其状态标记为 Retry，并将任务提交给 ScheduledExecutorService.schedule()，指定延迟时间；\n\n在任务正式进入线程池前不会并发触发，调度逻辑是串行安全的。\n\n\n我们做了两方面的幂等控制：\n\n任务唯一标识 + 状态校验：每个任务有唯一 ID，重试前会检查数据库中当前状态是否仍是失败，只有任务仍处于 Retry 才会触发实际执行；\n\n乐观锁 / CAS 控制：我们在更新任务状态时会用版本号机制避免并发状态更新冲突，防止任务被“多线程同时重试”。\n\n此外，每次任务执行都写操作日志，便于定位重复提交问题。\n\n除了自动重试，我们还设计了安全兜底：\n\n如果重试三次后依然失败，任务会被标记为 FAILED 并进入异常任务池；\n\n系统会触发钉钉或邮件告警，提示运维手动干预；\n\n未来还计划引入 重试限流 + 熔断保护机制，防止雪崩级的连环失败。\n\n所以我们不是简单地“重试三次”，而是结合任务调度、状态管理和系统容错能力，设计了一套低侵入、可观测、可控制的指数退避重试机制。"
+      },
+      {
+        "question": "你们的权限控制刷新是通过监听事件总线实现的，具体使用的是什么事件机制？Spring Event？Kafka？Redis 发布订阅？\n\n",
+        "answer": "在我们的平台中，权限控制非常关键，而且要求用户角色变更后，权限缓存要在 50 毫秒内生效。\n\n如果所有服务都直接查询数据库，会造成性能瓶颈。因此我们在设计上采用了事件驱动的缓存刷新机制，在用户权限变更时，通过消息广播让所有子系统异步刷新本地缓存，避免频繁数据库访问。\n\n在事件机制选型上，我们权衡了几种方式：\n\nSpring Event：适合单体或单 JVM 内部通信，跨服务场景不适用；\n\nKafka：强可靠性但延迟稍高 + 依赖组件重，不适合 50ms 内响应；\n\n最终我们选择了 Redis 发布订阅机制，原因有三：\n\n延迟低，消息传播几乎是毫秒级；\n\n轻量级，系统已有 Redis 集群，无需额外组件；\n\n实现简单，适合我们这种对消息可靠性要求不高但实时性要求极高的场景。\n\n权限变更时，我们会向 Redis 的 perm-refresh-channel 频道发布用户ID与操作标识，其他服务监听该频道，收到后刷新对应缓存。\n\n为了避免消息丢失或监听失败，我们也做了以下增强措施：\n\n每条消息都会记录到一个本地日志中（或数据库），作为 fallback；\n\n监听服务会定时做“权限快照校验”，对比 Redis 中最新数据与本地缓存是否一致，做补偿更新；\n\n在极端情况下，服务也支持手动触发缓存强制刷新接口。\n\n所以我们选择 Redis Pub/Sub 是基于性能、架构复杂度和实时性要求综合考虑的结果，整体实现下来低耦合、低延迟、易扩展，满足了权限秒级同步的业务要求。"
+      },
+      {
+        "question": "用户权限缓存是存在哪？本地？Redis？如何保证缓存一致性？",
+        "answer": "在我们平台中，权限信息的读取非常频繁，而权限变更相对较少，因此我们采用了**“本地缓存 + Redis 缓存” 的双层架构**：\n\n本地缓存（如 Caffeine）：每个服务节点都有自己的缓存副本，命中速度快，毫秒级响应；\n\nRedis 缓存：作为服务之间的共享中间层，存储最新权限快照，用于重建本地缓存或跨服务校验；\n\n权限变更时，服务首先更新数据库和 Redis，然后通过**事件机制（我们用的是 Redis Pub/Sub）**广播变更，所有节点收到通知后刷新本地缓存。\n\n我们采用了最终一致性策略，并配合多种手段提升一致性保障：\n\n事件驱动主动刷新：权限修改后，通过 Redis Channel 广播消息，所有节点监听到后立即更新本地缓存；\n\n缓存版本号机制：每条权限数据携带版本号（或时间戳），更新时先判断是否是最新，避免脏数据回刷；\n\n定期比对校验：每个服务会定时拉取 Redis 中的权限快照，与本地缓存对比做校正，作为最终补偿手段；\n\n支持强制刷新接口：运维或系统在特殊场景下可通过 HTTP API 触发某用户或全局权限的强制同步。\n\n虽然 Pub/Sub 机制延迟低，但不保证消息可靠投递。为避免出现权限不同步，我们还做了：\n\n失败日志记录：每次缓存刷新异常都会记录日志 + 报警（如钉钉通知），便于排查；\n\n超时刷新兜底：本地缓存的 TTL 设计为短周期（如 5~10 分钟），即使消息未收到也能“自然过期 + 自动重建”；\n\n灰度验证机制：变更权限后会在后台验证缓存是否成功刷新，未命中的会强制刷新，保障关键用户的一致性。\n\n所以我们的权限缓存策略是读快写少、主动同步、最终一致、可观测补偿，能在高并发下兼顾性能和一致性，确保权限变更后能在秒级内正确生效。"
+      },
+      {
+        "question": "JWT 和 SAML 的集成分别是如何实现的？",
+        "answer": "JWT 和 SAML 都是用于用户身份认证和单点登录的机制，但它们适用场景和技术实现差异明显：\n\nJWT（JSON Web Token）：轻量级、基于 REST 和 JSON 传输，适用于现代微服务架构和前后端分离系统。\n\nSAML（Security Assertion Markup Language）：基于 XML 的认证协议，广泛用于大型企业集成、兼容传统系统或政府平台。\n\n在 Spring Boot 项目中，我们集成 JWT 的方式如下：\n\n用户登录成功后，服务端生成一个 JWT（包含用户名、角色、过期时间等 Claim 信息），签名后通过 Header 返回；\n\n前端将 JWT 保存到本地（通常是 LocalStorage）并在后续请求中通过 Authorization: Bearer <token> 传回；\n\n后端使用 JWT 过滤器（如 OncePerRequestFilter）拦截请求，解析并校验 Token，完成鉴权逻辑；\n\n系统之所以同时支持 JWT 和 SAML，是因为我们既要对接现代 Web 应用，也要兼容传统的企业认证体系。\n\n内部统一登录门户使用 SAML 接入；\n\n微服务 API 网关内部使用 JWT 传递用户上下文，实现分布式认证；\n\n我们在登录网关处做协议识别，登录成功后将 SAML 信息转为 JWT Token 注入响应头，在后续微服务中解密解析使用。"
+      },
+      {
+        "question": "JWT 如何续签？Token 失效的机制如何设计？",
+        "answer": "在我们的系统中，JWT 是短期有效的自包含令牌，通常设置有效期为 15~30 分钟，目的是：\n\n减少因泄露带来的风险；\n\n避免服务端存储 Session，提高系统伸缩性。\n\n一旦过期，JWT 无法续签，只能重新登录或调用刷新接口获取新的 Token，这就是 Refresh Token 机制的作用。\n\n为了避免用户频繁登录，我们设计了 双 Token 机制：Access Token + Refresh Token：\n\nAccess Token 有效期短（如 15 分钟），每次请求都携带；\n\nRefresh Token 有效期长（如 7 天），只在 Access Token 过期时才使用；\n\n当前端检测到 Access Token 失效时，会自动调用 /auth/refresh 接口，带上 Refresh Token；\n\n后端验证 Refresh Token 合法性并重新生成新的 Access Token 返回。\n\n后端会对 Refresh Token 做持久化存储（如 Redis），并绑定用户 ID、设备信息、IP，用于后续验证和单点退出控制。\n\n为了减少频繁续签造成的系统负担，我们做了两点优化：\n\n前端本地续签倒计时机制：提前几分钟在 Access Token 即将失效前静默续签；\n\n刷新限制频率：每个 Refresh Token 每小时只能续签一次，防止恶意刷接口。\n\n"
+      },
+      {
+        "question": "在使用 Nacos 的过程中，有没有遇到注册失败、心跳丢失的问题？怎么排查的？",
+        "answer": "我们在使用 Nacos 做服务注册中心过程中，确实遇到过服务注册失败或心跳中断的问题。典型表现为：\n\n控制台上部分服务突然显示为 “不健康” 或 “未注册”；\n\n某些节点虽然还在运行，但无法被其他服务调用；\n\n查看日志出现 Client not connected, skip sending beat... 或 Request nacos server failed...。\n\n出现这类问题，我们通常从三方面入手排查：\n\n✅ 1. 检查服务端配置（Nacos Server）\n是否存在 注册容量限制（maxInstance）；\n\nServer 是否发生了 Leader 切换或短暂重启；\n\n检查 Server 端日志，是否出现心跳接收异常、延迟处理、网络抖动等信息。\n\n✅ 2. 检查客户端配置\n客户端是否使用了正确的 nacos.discovery.server-addr；\n\n是否误设了 health-check 为 false 或者心跳间隔过短；\n\n检查服务是否部署在容器中，容器 网络不通、DNS 解析失败 都会影响注册和心跳。\n\n✅ 3. 网络层和基础设施排查\n客户端与注册中心之间是否有 NAT、Sidecar、网关或防火墙 造成连接超时；\n\n是否存在定时任务 / 冷启动时的大量注册请求，导致 Nacos 瞬时压力过高被限流；\n\n使用 curl 测试 Nacos Server 的健康接口，确认网络连通性。\n\n为了彻底解决心跳丢失和注册不稳定的问题，我们做了以下优化：\n\n服务端层面\n\n升级 Nacos 至 2.x 版本，提升集群稳定性；\n\n配置 nacos.core.auth.enabled=true 开启鉴权，避免非法请求；\n\n使用 3 节点集群部署，保障 HA 和 Leader 切换的稳定性。\n\n客户端层面\n\n合理设置心跳间隔和超时时间（如 5s 和 15s）；\n\n针对容器部署场景，设置固定 IP 或使用 hostNetwork 模式；\n\n使用 Nacos 的 naming.failover.enabled=true 开启本地缓存兜底，提升容错能力。\n\n监控与报警\n\n接入 Prometheus + Grafana，实时监控注册实例数、心跳 RTT、失败率等指标；\n\n服务下线 / 心跳失败超过阈值后，通过钉钉或邮件通知运维排查。"
+      },
+      {
+        "question": "服务发现失败时，Feign 客户端是如何处理的？",
+        "answer": "在 Spring Cloud 中，Feign 客户端通过 Ribbon（或 Spring Cloud LoadBalancer）配合注册中心（如 Nacos）进行服务发现。\n\n如果服务实例无法从 Nacos 拉取，Feign 默认会抛出 No instances available for ... 异常；\n\n此时服务调用会立即失败，不会重试，需要我们自己设计容错机制。\n\n在我们的系统中，曾遇到过以下情况导致 Feign 调用失败：\n\n部分服务注册失败，Nacos 实例列表为空；\n\n服务部署过程中出现短暂空窗期；\n\n网络抖动导致服务发现延迟；\n\n这些都可能引发“服务发现失败”或“实例不可用”的异常，导致请求中断，影响整体稳定性。\n\n1. 断路器机制（Circuit Breaker）\n我们使用了 Resilience4j 断路器集成到 Feign 中，\n当某个服务连续失败超过阈值，断路器会打开，短时间内拒绝访问，避免雪崩；\n\n并配置降级方法 fallback，比如返回默认值或空列表，保证调用方不被拖垮。\n\n\n"
+      },
+      {
+        "question": "权限、用户、任务、场景管理这些模块是如何拆分的？是否有领域驱动设计（DDD）的思想？",
+        "answer": "权限、用户、任务、场景管理这些模块是如何拆分的？是否有领域驱动设计（DDD）的思想？"
+      },
+      {
+        "question": "服务之间是 REST 调用还是 RPC 调用（如 gRPC）？为什么选择这种方式？",
+        "answer": "在我们当前的项目中，服务之间主要是基于 RESTful 接口进行调用，通过 Spring Cloud OpenFeign + Nacos 实现服务发现和负载均衡。\n我们在做架构选型时，系统性比较过 REST 和 gRPC 两种调用方式，它们各有特点，\n我们主要选择 REST 的原因是：\n\n前后端解耦 + 浏览器友好：我们系统部分服务会被前端调用，REST 更适合前端集成和调试；\n\n团队技术栈统一：我们团队熟悉 Spring Boot 和 Feign，用 REST 能快速上手、开发效率高；\n\n接口变更灵活性更高：在权限管理、任务调度等模块中，我们需要灵活的 JSON 格式传参，REST 更方便扩展；\n\n生态和可维护性：Spring 全家桶集成简单，配合 Swagger 做文档和接口测试非常高效；\n\n服务并发压力中等：当前系统调用量还未到高频高并发的级别，REST 的性能是可以接受的。\n\n我们确实也评估过在内部高频调用场景（如模型服务、日志收集服务）中使用 gRPC，尤其在需要低延迟 + 强类型接口定义时非常合适。\n\n后续如果系统进入百万级调用场景或需要双向流通信，我们会考虑引入 gRPC 或 Dubbo 作为内部通信协议。\n"
+      },
+      {
+        "question": "是否使用了网关统一入口？如何做路由与鉴权？",
+        "answer": "是的，我们的微服务平台采用了 Spring Cloud Gateway 作为统一网关入口，对所有外部请求进行接入管理。\n\n网关的作用主要有以下几点：\n\n统一的 API 暴露和路由分发；\n\n动态路由和服务注册发现（结合 Nacos）；\n\n集中处理认证、鉴权、限流、灰度、熔断等通用逻辑；\n\n解耦前端与后端服务，提升架构灵活性。\n\n我们的路由配置方式有两种：\n\n静态路由：核心系统（如认证服务、基础配置服务）使用固定路由配置；\n\n动态路由：业务服务通过 Nacos 动态注册，网关自动发现服务并转发请求；\n\n每个服务注册时携带 contextPath，网关通过配置规则（如 /api/user/** → user-service）进行精确或模糊匹配路由。\n\n\n鉴权方面，我们在 Gateway 层实现了统一的 JWT 校验机制，流程如下：\n\n所有外部请求首先进入网关；\n\n网关读取请求头中的 Authorization 字段，解析并验证 JWT Token；\n\n验证通过后，从 Token 中提取用户信息（如 userId、role）放入请求头中转发；\n\n下游服务不再关心鉴权逻辑，只需读取上下文中的用户身份即可。\n\n除了 JWT 验证外，我们还做了：\n\n白名单控制：如登录、注册接口无需认证；\n\n权限细粒度校验：部分高敏接口（如管理员操作）需检查用户角色或权限标识；\n\nIP 黑白名单、请求频控（限流）、签名校验等安全机制也集中在网关实现。\n\n"
+      },
+      {
+        "question": "每个服务在 OpenShift 中是如何部署的？使用了 Deployment 还是 StatefulSet？",
+        "answer": "在我们当前的 OpenShift 微服务架构中，所有服务都是通过 Deployment 控制器进行部署和管理的。\n每个服务打成镜像后，通过 CI/CD 自动部署到 OpenShift 集群，部署模板中包含 Deployment、Service、ConfigMap、Secret 等资源。\n我们选择 Deployment 的原因是：\n\n项目中的服务大部分是 无状态的 Web 接口服务（如权限管理、任务调度、用户服务），不依赖固定网络标识或持久存储；\n\nDeployment 支持 自动滚动更新、回滚、Pod 自愈、弹性伸缩（配合 HPA），更适合部署这类业务服务；\n\n对于需要访问数据库或缓存的服务，我们统一采用外部中间件（如独立部署的 MySQL、Redis、Kafka），业务服务自身不保留状态，不涉及有序启动或持久数据存储需求。\n\n"
+      },
+      {
+        "question": "如何做服务配置的集中管理？使用 ConfigMap 吗？",
+        "answer": "在我们的 OpenShift 微服务平台中，所有无敏感信息的服务配置都统一通过 Kubernetes 的 ConfigMap 来管理，用于覆盖服务启动时的环境变量、配置文件路径、调度参数等。\n\n每个服务部署时都会挂载对应的 ConfigMap，实现配置的集中管理、统一下发，避免代码中硬编码配置，提升灵活性和可维护性。\n我们的配置中心采用 按服务维度划分 ConfigMap，并按环境区分命名\n每个 ConfigMap 对应一个服务，包含 YAML、JSON 或纯文本格式的配置项：\n\n可通过 envFrom 将 key-value 自动注入为环境变量；\n\n或通过 volumeMounts 挂载为 /etc/config/app.yaml 等路径供服务读取；\n\n配置统一管理在 Git 仓库中，配合 CI/CD 流程自动更新。\n\n"
+      },
+      {
+        "question": "服务的资源限制是怎么配置的（CPU/Memory requests 和 limits）？",
+        "answer": "在 OpenShift 中，每个服务的 Deployment 或 Pod 都会显式配置资源限制：\n\nrequests 表示容器启动时所需的最低资源保障；\n\nlimits 表示容器可使用的最大资源上限；\n\nOpenShift 会根据 requests 做资源调度，limits 是为了防止单个服务资源占满导致其他服务被驱逐（OOM Kill）。\n\n我们通常按服务的任务类型 + 并发量预估分层制定资源配额策略，配置原则是：requests 能撑起日常压力、limits 限制突发不越界，防止资源争用。\n\n\n\n"
+      },
+      {
+        "question": "kubernetes HPA 的伸缩策略基于什么指标？是否考虑了自定义指标？",
+        "answer": "在我们的 Kubernetes/OpenShift 集群中，HPA（Horizontal Pod Autoscaler）默认使用的是 CPU 使用率来做伸缩判断，我们配置了：\n\ntargetCPUUtilizationPercentage（比如设置为 60%）\n\n当实际 CPU 使用率连续高于阈值时，HPA 控制器会根据计算公式自动增加 Pod 副本数；\n\n低于阈值时，适当缩容，但我们设置了 minReplicas 避免缩容到 0；\n\nMemory 也可以配置，但在 Kubernetes 原生版本中不是默认指标，需要额外开启资源监控支持。\n\n在我们的实际项目中，CPU 指标并不能完全反映服务的真实压力，特别是在任务调度类或异步事件服务中，我们更关注：\n\n队列长度（如 Kafka backlog、Redis List 长度）\n\n请求速率（QPS） 或 任务堆积数\n\n自定义业务指标（如在线人数、并发任务数）\n\n为此，我们引入了 自定义指标 HPA（External Metrics），通过以下方式实现：\n\n利用 Prometheus + Prometheus Adapter 将业务指标暴露为 Kubernetes 可识别的 HPA 指标；\n\n"
+      },
+      {
+        "question": "在实现动态权限控制时，你是如何使用Spring Security来实现的？监听事件中心是通过哪种机制实现的？",
+        "answer": "我们平台的权限模型支持角色动态变更与权限即时生效，例如管理员调整用户权限后，希望几十毫秒内所有微服务权限生效，而不是等缓存过期或用户重新登录。\n\n为了满足这种“低延迟、高一致”的需求，我们设计了一套 基于 Spring Security + 自定义缓存 + 事件总线 的动态权限控制方案。\n\n在权限控制层，我们使用的是 Spring Security + 自定义 AccessDecisionManager 来实现资源级权限判断：\n\n用户登录成功后，会将其角色和权限信息封装成 Authentication 对象；\n\n每次访问受保护资源时，AccessDecisionManager 会根据 SecurityContextHolder 中的用户权限进行判断；\n\n权限信息是从我们维护的 本地缓存或 Redis 缓存 中读取，保证判定效率。\n\n此外，我们自定义了 PermissionEvaluator，支持表达式注解如 @PreAuthorize(\"hasPermission(...\") 的权限校验。\n\n当用户权限发生变更时，我们会发布一个权限变更事件，所有服务节点监听到后自动刷新缓存。\n事件监听机制使用的是 Redis 发布订阅（Pub/Sub），因为我们对 跨服务通信的延迟要求较高（<50ms）。\n\n实现步骤如下：\n\n管理后台修改用户权限后，更新数据库与 Redis 中的权限信息；\n\n向 Redis 的 perm-refresh-channel 发布一条包含用户 ID 的消息；\n\n所有服务节点监听该频道，收到消息后刷新对应用户的权限缓存；\n\n下一次访问资源时会重新从缓存加载最新权限。\n\n权限缓存我们采用的是 本地缓存（如 Caffeine）+ Redis 缓存 两级结构：\n\n本地缓存保证查询速度；\n\nRedis 缓存作为权威源；\n\n事件驱动方式可实现多节点快速同步；\n\n万一事件丢失，我们还有定期任务校验缓存一致性，支持主动刷新接口。\n\n所以，我们通过 Spring Security 的扩展机制 + Redis 事件机制，做到了权限变更后全系统秒级生效，既保证了安全性，又兼顾了系统性能与一致性。"
+      },
+      {
+        "question": "在你计划引入Kubernetes HPA弹性伸缩时，是否评估过指标选型？是基于CPU、内存还是自定义指标？你怎么处理冷启动问题？",
+        "answer": "在你计划引入Kubernetes HPA弹性伸缩时，是否评估过指标选型？是基于CPU、内存还是自定义指标？你怎么处理冷启动问题？"
+      },
+      {
+        "question": "HPA 的原理是什么？它是怎么判断是否扩容的？",
+        "answer": "HPA 会定期（默认 15s）通过 metrics-server 采集 Pod 的资源使用指标（如 CPU、内存），根据设置的目标值（如 CPU 使用率 60%）计算出期望副本数，然后自动更新对应 Deployment 的 replicas 字段"
+      },
+      {
+        "question": "HPA 支持哪些指标类型？可以自定义指标吗？",
+        "answer": "HPA 支持三种指标类型：\n\nResource 类型：CPU、内存（最常用）\n\nObject 类型：如 Queue 长度、Ingress QPS\n\nPods 类型：Pod 平均自定义指标（如每个 Pod QPS）\n\n如果要使用自定义指标，需要配合 Prometheus Adapter 实现自定义 metrics API。"
+      },
+      {
+        "question": "HPA 如何与 Deployment/StatefulSet 联动？",
+        "answer": "HPA 的 scaleTargetRef 字段指向目标资源（一般是 Deployment），它通过更新该对象的 spec.replicas 字段触发扩缩容。StatefulSet 也支持 HPA，但扩容有顺序性，缩容更谨慎。"
+      },
+      {
+        "question": "如果 Pod 没有配置 CPU requests，HPA 还能用吗？",
+        "answer": "不能。HPA 依赖 metrics-server 采集 CPU usage / requests 的百分比；如果没配置 requests，无法计算 usage ratio，HPA 会报错。"
+      },
+      {
+        "question": "如果 HPA 没生效，你会怎么排查？",
+        "answer": "是否配置了 resources.requests.cpu？\n\nmetrics-server 是否正常运行？（kubectl top pod 正常吗）\n\nkubectl describe hpa 查看当前值、目标值、推荐副本数\n\n应用是否在高负载状态？（没有达到阈值也不会扩容）"
+      },
+      {
+        "question": "你们线上怎么用 HPA？有没有调过参数？扩缩容频率如何？",
+        "answer": "配置了 HPA，目标 CPU 利用率设为 60%，副本数范围是 2～10。上线初期默认间隔（15秒）扩容太慢，我们调低了采样周期，通过 --horizontal-pod-autoscaler-sync-period 让它更灵敏响应流量激增。同时结合 Gateway 限流和 Prometheus 监控，观察 HPA 行为是否过度震荡。"
+      }
+    ],
+    "面试冲刺": [
+      {
+        "question": "HashMap 的底层实现？为什么线程不安全？如何解决？",
+        "answer": "HashMap 的底层是基于数组和链表/红黑树的结构，JDK 1.8 起在链表过长时会转成红黑树优化查找性能。由于 put 操作不是原子的，尤其在扩容时会出现线程之间的数据覆盖、死循环等问题，因此线程不安全。实际开发中如果需要并发安全，可以使用 ConcurrentHashMap，它在 JDK 1.8 采用了 CAS + synchronized 的方式，性能更优"
+      },
+      {
+        "question": "volatile 和 synchronized 的区别？",
+        "answer": "volatile 用于保证变量在多线程间的可见性，并禁止指令重排序，但不能保证原子性，适合用于状态标记等轻量场景。而 synchronized 是一种重量级锁机制，既能保证可见性，也能保证原子性，适合处理临界区中的复合操作，比如 count++、List.add() 等。在实际开发中，轻量标记建议用 volatile，涉及逻辑处理则推荐 synchronized 或更高效的并发工具类。"
+      },
+      {
+        "question": "Java 中的内存模型（JMM）和可见性问题？",
+        "answer": "Java 的内存模型（JMM）通过主内存和线程工作内存的划分，规定了变量在并发读写时的可见性和一致性。默认情况下，线程间的变量修改是不可见的，因此我们需要依赖如 volatile、synchronized 等机制来建立 happens-before 关系，保障可见性和有序性。"
+      },
+      {
+        "question": "JVM 调优：如何排查内存泄漏？如何配置 GC 策略？",
+        "answer": "排查内存泄漏可以从 GC 日志入手，判断 Full GC 是否频繁、回收是否无效；结合 jmap 导出堆快照，使用 MAT 工具找出泄漏对象及其 GC Root；代码中注意 ThreadLocal、静态集合等易泄漏场景。GC 策略方面，如果是大堆+响应时间敏感系统推荐 G1，可以通过 MaxGCPauseMillis 控制最大停顿时间，同时结合 JVM 参数做资源限制和调优。"
+      },
+      {
+        "question": "Bean 的生命周期？有哪些注解可以控制 Bean 的创建？",
+        "answer": "Spring Bean 的生命周期包括实例化、属性填充、初始化、使用和销毁几个阶段。在初始化和销毁阶段，Spring 提供了多种方式来插入自定义逻辑，比如 @PostConstruct、InitializingBean 接口、@PreDestroy、DisposableBean 接口，以及 BeanPostProcessor 来扩展生命周期控制。在实际开发中，我通常使用 @PostConstruct 和 @PreDestroy 注解搭配注入方式管理生命周期逻辑。"
+      },
+      {
+        "question": "Spring AOP 的实现原理？代理机制是怎么做的？",
+        "answer": "Spring AOP 的底层原理是通过代理机制实现的，主要分为两种：JDK 动态代理和 CGLIB 字节码增强。默认情况下，如果目标类实现了接口，会使用 JDK 动态代理；否则使用 CGLIB 来生成目标类的子类。Spring 在容器初始化阶段通过 BeanPostProcessor（如 AnnotationAwareAspectJAutoProxyCreator）来识别哪些 Bean 需要织入增强逻辑，并动态生成代理对象注册到容器中。这样当我们调用这些 Bean 的方法时，实际上是执行了代理逻辑，也就是切面中的各种通知（前置、后置、环绕等）。"
+      },
+      {
+        "question": "Spring Boot 自动配置原理？",
+        "answer": "Spring Boot 自动配置的核心是 @EnableAutoConfiguration，它通过 AutoConfigurationImportSelector 动态加载所有 spring.factories 中声明的自动配置类。这些配置类使用了大量的条件注解（如 @ConditionalOnClass, @ConditionalOnMissingBean 等）来判断是否应该生效，从而实现了按需加载、默认配置的效果。这样我们只需要引入依赖即可“零配置”使用功能，比如数据源、Web MVC、缓存等"
+      },
+      {
+        "question": "SQL 优化的常见手段有哪些？",
+        "answer": "SQL 优化可以从多个角度入手，首先是写法层面，尽量避免 SELECT *、使用合适的 WHERE 条件、避免函数包裹字段等；其次是索引设计，确保关键字段命中索引，并注意避免索引失效；第三，借助执行计划工具查看是否存在全表扫描等问题；此外，还可以通过表分区、归档旧数据等方式优化物理存储层面的查询效率。在实际项目中我通常结合 SQL 分析工具和慢查询日志进行定位，然后逐步进行调优。"
+      },
+      {
+        "question": "如何分析 SQL 执行计划？Explain 的结果怎么看？",
+        "answer": "我通常使用 EXPLAIN ANALYZE 来分析 SQL 执行计划。它展示了每一步执行的方式（如 Seq Scan、Index Scan）、成本、实际耗时和返回的行数。关键是识别是否使用了合适的索引、是否存在全表扫描或嵌套循环这种高成本操作。对于 rows 估算严重不准的情况，我会检查表的统计信息是否过时；对于嵌套循环导致慢查询的 JOIN，我会考虑优化为 Hash Join，或者调整表连接顺序。"
+      },
+      {
+        "question": "分库分表的策略？",
+        "answer": "分库分表主要分为水平和垂直两类。水平分库分表是按某个分片键将数据打散到不同的库或表中，常用于高并发、高数据量场景，如用户表、订单表等。垂直分库适合业务拆分，将不同业务模块的数据分开存储。实现分库分表后，通常会使用如 ShardingSphere 等中间件来统一路由和管理。在实际落地中，我们也需要考虑分布式事务、全局 ID 生成、跨表聚合等挑战，并采用如雪花算法、TCC 模型等解决方案。"
+      },
+      {
+        "question": "什么是限流、熔断、降级？Spring Cloud 里如何实现？",
+        "answer": "限流、熔断和降级是微服务中的三种核心服务保护机制。限流主要是控制访问频率，避免高并发压垮服务；熔断是当服务响应变慢或失败率升高时，自动“断开”调用链，避免连锁故障；降级是在服务不可用时提供备用方案或默认返回结果。在 Spring Cloud 中，我们通常使用 Sentinel 或 Resilience4j 来实现这些功能，通过注解或配置方式设置规则。限流可以在网关层完成，熔断和降级则通过注解或 AOP 的方式增强方法调用，非常适合构建高可用系统"
+      },
+      {
+        "question": "服务间调用使用什么方式？RestTemplate、Feign、gRPC 哪些适用场景？",
+        "answer": "微服务之间的调用方式主要包括 HTTP 调用和 RPC 调用。HTTP 方式中 RestTemplate 和 Feign 最常用，RestTemplate 需要手动拼接请求，不推荐在新项目中使用；而 Feign 是声明式客户端，和 Spring Cloud 整合度高，是目前推荐使用的方式。对于高并发、跨语言场景，我们会使用 gRPC，它基于 HTTP/2 和 Protobuf，性能更好，适用于内部系统之间频繁调用的核心链路。实际项目中我们根据业务特点选择合适的调用方式，比如外部接口用 Feign，内部高频接口用 gRPC。"
+      },
+      {
+        "question": "CAP 理论和最终一致性怎么实现？",
+        "answer": "CAP 理论指出，在分布式系统中不能同时满足一致性、可用性和分区容忍性三个目标。由于分区容忍性是前提，我们往往需要在一致性和可用性之间做权衡。对于业务系统来说，强一致会影响可用性，所以更常采用“最终一致性”方案。常见的做法包括使用消息队列进行异步处理、本地消息表+定时补偿、TCC 分布式事务模型等。这些方式虽然牺牲了瞬时一致性，但可以确保在一定时间内达成业务一致状态"
+      },
+      {
+        "question": "如何进行服务拆分？拆分依据是什么？领域驱动设计怎么落地？",
+        "answer": "服务拆分主要基于业务边界、数据独立性、团队协作、模块变化频率等因素来决定。通常我们会先识别出业务中的核心领域，比如订单、库存、支付等，然后将其拆分成独立的微服务。领域驱动设计（DDD）是指导服务拆分的有效方法，通过划分限界上下文，每个服务只关注自身领域，避免出现数据共享和逻辑耦合。在实际项目中我们会结合 DDD 建模，通过接口与消息通信协调各子系统，从而构建出解耦、弹性、可扩展的服务架构。"
+      },
+      {
+        "question": "如何设计 RESTful API？有哪些最佳实践？",
+        "answer": "在设计 RESTful API 时，我遵循资源导向的思想，使用名词表示资源，用标准 HTTP 方法表达操作，比如用 GET /users/123 获取用户信息，而不是写成 getUserById。同时我会结合状态码设计，比如创建成功返回 201，删除成功返回 204。接口返回结构统一封装，便于前后端协作。在大型项目中，我也会在路径中加入版本号，比如 /api/v1，同时支持分页、排序、筛选等标准参数，确保接口清晰、语义明确、易维护。"
+      },
+      {
+        "question": "如何处理 API 的版本控制？",
+        "answer": "我们在项目中使用 URI 路径方式进行 API 版本控制，例如 /api/v1/users 和 /api/v2/users。这种方式直观易懂，方便接口演进和文档管理。当接口需要新增字段或修改逻辑时，我们通常保留旧版本的接口，新版本另起路径，保证老用户正常使用。同时我们在文档中标注每个版本的状态（活跃/废弃），并结合网关或注解区分不同版本的 Controller，确保平滑过渡。"
+      },
+      {
+        "question": "如何处理错误响应？异常统一处理机制？",
+        "answer": "在项目中我会通过 @RestControllerAdvice + @ExceptionHandler 实现统一的全局异常处理机制，配合自定义返回对象 ApiResponse，确保所有接口返回结构一致。在异常处理中，我会区分系统异常、业务异常、参数校验异常等，并给予明确的错误码和提示信息，方便前端展示和定位问题。同时，我们也会使用日志系统如 Logback 记录详细异常堆栈，避免异常信息暴露给用户，保障系统安全。"
+      },
+      {
+        "question": "Docker 镜像构建流程？如何优化构建速度？",
+        "answer": "Docker 镜像是通过 Dockerfile 分层构建的，构建时每条命令会生成一层缓存。在项目中我会通过合理调整命令顺序，比如将 COPY 和 RUN 中频繁变动的内容放在后面，提高缓存命中率。我们还会使用多阶段构建，将构建和运行环境分开，减小镜像体积。此外通过 .dockerignore 避免复制无关文件，CI 中开启缓存功能加快构建效率。在一个多模块 Spring 项目中，我曾通过这些优化将镜像构建时间从 3 分钟降到了 40 秒。"
+      },
+      {
+        "question": "多阶段构建（multi-stage build）怎么使用？",
+        "answer": "多阶段构建是通过在 Dockerfile 中定义多个 FROM 阶段，将构建与运行过程解耦。我常用它来构建 Java 项目，第一阶段使用 Maven 镜像进行打包，第二阶段只复制打好的 jar 包到运行镜像中，从而大大减少镜像体积，提高构建效率和安全性。比如一个原始镜像可能有 800MB，优化后可降到 200MB 左右，是实际项目中非常重要的优化手段。"
+      },
+      {
+        "question": "容器之间怎么通信？网络模式有哪几种？",
+        "answer": "容器之间通信主要通过 Docker 网络机制实现。最常用的是 bridge 网络，容器处于同一网络中时可以通过容器名互相访问。在实际开发中我们会创建自定义网络，保证服务之间可控通信。Docker 支持多种网络模式，比如 host 模式允许容器共享宿主机网络，适用于高性能场景；overlay 模式用于容器跨主机通信，常见于 Swarm 或 Kubernetes 环境。日常开发和部署中，我们通常选择自定义 bridge 网络结合容器 DNS 名称来完成服务间调用。"
+      },
+      {
+        "question": "OpenShift 和 Kubernetes 有什么区别？OpenShift 的权限模型、项目（project）机制是怎样的？",
+        "answer": "OpenShift 是基于 Kubernetes 构建的企业级容器平台，提供了更强的安全控制、内置 CI/CD、Web 控制台等功能。和 Kubernetes 相比，OpenShift 默认限制了容器运行权限，更注重安全性。它的权限模型基于 Role 和 RoleBinding 实现精细化访问控制，还加强了镜像策略和运行用户约束。OpenShift 中的 Project 是对 Kubernetes Namespace 的增强，除了隔离资源，还结合了 RBAC、配额、网络策略，适合多团队协作场景。在实际使用中我们通过 Project 管理不同服务，结合 CI/CD 和权限隔离实现了 DevOps 工作流。"
+      },
+      {
+        "question": "如何排查 OpenShift 中 Pod 无法启动的问题？",
+        "answer": "在 OpenShift 中排查 Pod 启动失败，我一般会按以下几个步骤操作：先通过 oc get pods 查看状态，如果是 Pending 或 CrashLoopBackOff，我会用 oc describe pod 详细查看事件日志，进一步用 oc logs 分析容器内部的错误日志。OpenShift 有一些特有的限制，比如默认不允许容器以 root 身份运行，涉及 SCC 的限制比较常见；此外还有镜像拉取策略、资源配额、PVC 绑定失败等问题。我曾遇到过因镜像为 root 用户被 SCC 拦截，通过 add-scc-to-user anyuid 解决了问题"
+      },
+      {
+        "question": "Linux 下怎么查看内存/CPU 使用情况？",
+        "answer": "在 Linux 下查看内存和 CPU 使用情况，我常用的工具包括 top 和 free。top 可以实时查看进程的 CPU 和内存占用情况，并能通过快捷键进行排序；free -h 用于查看整体内存使用，包括可用内存和缓存。除此之外，我也会用 ps aux --sort=-%cpu 来快速定位资源占用高的进程，或者用 vmstat 观察系统负载趋势。如果需要更直观和交互式的界面，我会使用 htop 工具，它支持更灵活的监控和操作。"
+      },
+      {
+        "question": "如何用 Shell 写一个定时任务脚本？举例说明。",
+        "answer": "定时任务通常通过 crontab 实现，配合 Shell 脚本使用非常灵活。比如我写过一个日志备份脚本，每天凌晨把指定目录下的日志拷贝到备份目录中，并记录操作日志。脚本编写后我会赋予执行权限，然后在 crontab -e 中配置任务时间，比如 0 1 * * * 表示每天凌晨1点执行。定时任务在运维和自动化脚本中非常常用，比如定期清理缓存、备份数据库、检测服务状态等。"
+      },
+      {
+        "question": "使用 awk / sed / grep 做日志分析的例子？",
+        "answer": "我平时在 Linux 下处理日志时经常用 grep、awk、sed 三个工具。比如我会用 grep \"ERROR\" 快速过滤出错误日志，用 awk '{print $3}' 提取出模块字段并统计错误频率，用 sed 替换掉日志中泄露的敏感参数。曾经遇到过某服务异常时，我用一行 awk 命令统计出哪个接口报错最多，帮我们快速定位到问题模块。这类命令简单高效，在日常运维排查中非常实用。"
+      },
+      {
+        "question": "如何编写一个监控进程运行状态的脚本？",
+        "answer": "我平时会写 Shell 脚本定时检测服务状态，比如用 pgrep 检查进程是否存在，如果发现服务停止就记录日志，甚至自动重启服务。这个脚本通常结合 crontab 设置每分钟执行，也可以配合邮件或钉钉告警机制提醒我们。我曾在生产环境中监控过如 nginx、redis、业务进程等关键服务，避免了服务意外崩溃长时间未恢复的问题。"
+      }
+    ],
+    "IJP 面试": [
+      {
+        "question": "项目有没有碰到困难的问题？",
+        "answer": "有的，比较关键的一个问题是在我们项目初期从单体架构转型成微服务架构的过程中，关于认证和权限模型的职责划分，当时遇到了一些困难，也花了不少时间解决。\n\n在我们之前的单体项目中，认证和鉴权的逻辑都集中在一个系统里，用 Spring Security 实现了两条过滤链：\n一条处理 SSO 统一登录；\n另一条负责 JWT 校验。\n在jwt校验的过滤链我们用了比较传统的方式设计白名单来处理某些不需要验证身份信息的公共接口访问。\n我们还实现了细粒度的权限控制，像某些接口只能特定角色访问，比如部门管理员、系统管理员等。这些控制是通过角色和资源的配置表来实现的。为了提高性能，我们在服务启动时就把权限数据加载进内存，用全局单例缓存，避免了每次请求都查数据库。\n\n转型微服务之后，我们面临的第一个挑战就是：原来集中在一个系统里的认证和授权功能，应该怎么拆分？\n我当时主动去调研了 Spring Cloud、阿里云微服务、Netflix 等一些主流的微服务架构实践，了解了各个组件的职责定位。然后我把我的理解整理成一个草图，跟团队一起讨论，结合我们业务的实际情况，最终达成了一个比较清晰的方案：\nGateway 负责统一校验 JWT 是否有效，以及请求路由；\nAuth-Service 作为独立的认证中心，负责登录、SSO、签发 JWT；\n业务服务 通过解析 JWT 中的用户信息，结合权限表做细粒度的权限控制。\n\n在这个架构设计过程中，领导也提出了两个非常有代表性的问题，当时我们也做了充分讨论。\n第一个问题是：既然 Gateway 能解析 JWT，为什么不直接让它来签发 Token？\n\n我当时的回答是这样的：\n从技术上来说，Gateway 是可以承担签发 JWT 的功能。但从职责划分和安全性角度来看，并不推荐这么做。\n因为签发 JWT 本质上是认证逻辑，需要访问用户的信息、校验密码、甚至涉及签名秘钥（私钥）。如果让网关来做这件事，会导致它权限范围扩大，安全风险变高。\n而且我们业务的登录方式也在不断演进，从最开始的账号密码，到后面接入 SSO，再到未来可能会支持扫码登录等等。登录逻辑会越来越复杂\n所以我们把签发 JWT 的逻辑放在了专门的 Auth-Service 中，Gateway 只负责校验 token 是否合法，保持网关的轻量和中立。\n\n第二个问题是：既然 JWT 里有角色信息，为什么不直接在 Gateway 判断用户有没有权限访问某个资源？\n这个问题其实是讨论：Gateway 要不要承担细粒度的权限控制？\n我当时是这样理解的：\n技术上当然可以在 Gateway 中解析 JWT，判断角色，然后去查权限表判断是否能访问某个接口。但是这样一来，网关就耦合了业务权限模型，变成了业务网关。\n举个例子，如果某个角色的权限变了，我们就要改权限表、改配置，然后 Gateway 的逻辑也可能要同步更新。这种做法维护成本高，而且不利于复用。\n所以我们决定：Gateway 只做粗粒度的校验，比如 JWT 是否存在、是否过期、签名是否合法。而真正的资源权限判断，还是交给具体的业务服务来做，这样每个服务可以根据自己的资源模型做更灵活的控制。\n\n除了这两个问题，还有另一个实际问题：在转型之前已经有同事提出了白名单接口越来越多，怎么处理？\n在我们项目中，白名单配置随着接口的增加变得越来越多，传统方式是直接写在本地配置文件里，比如 application.yml。\n但这样有几个问题：\n每次改动都要改代码或配置文件；\n改完要重启服务才能生效；\n不方便运维或配置人员动态调整。\n所以我们后面对这块做了优化，使用了 Nacos 作为配置中心，实现白名单配置的集中化和自动刷新机制。\n我们的实现分为三步：\n1. 启动时加载配置\n我们在服务启动时，从 Nacos 配置中心读取白名单配置，并注入到一个 Spring Bean 中，通过 @ConfigurationProperties + @RefreshScope 的组合，Spring Boot 就会自动把配置中心的内容注入进来。\n2. 缓存到内存，提升性能\n白名单配置主要用于网关层或者权限拦截器中做路径匹配，如果每次都从配置中心读取显然不可行，性能会非常差。\n所以我们在读取配置后，将其缓存到内存中的 List中，在请求拦截阶段只在内存中做匹配判断。\n3. 配置变更后自动刷新\n我们使用了 Spring Cloud Alibaba 提供的机制，结合 @RefreshScope，当我们在 Nacos 修改配置并点击“发布”后，Spring Boot 会自动触发配置刷新。\n这个 Bean 会被重新创建，新的白名单自动注入进来，不需要重启服务，也不需要手动干预。\n\n这样做之后效果非常明显：\n\n运维和测试的时候可以直接在 Nacos 控制台修改白名单路径；\n配置变更后立刻生效，不需要发版；\n服务性能也不受影响，因为请求期间仍然是读取本地内存缓存；\n对业务开发者也更友好，不需要关心配置加载逻辑。\n我们还做了一个小优化，就是在配置变更时打日志，这样每次变更后我们都能在日志中看到最新配置，有助于问题排查和审计。\n\n------------ 预留的被提问内容 ------------\n刷新了白名单后，怎么保证本地缓存的一致？\n回答：\n虽然 @RefreshScope 和 @ConfigurationProperties 能刷新 Bean 的属性值，但它不会主动通知你的业务代码去刷新缓存。\n所以如果只是依赖注入到某个 Bean 中，缓存可能仍然是旧的 List，除非主动去读它。\n所以我这边采用了：通过配置变更监听机制 + 本地缓存刷新逻辑，来保证本地缓存与配置中心数据一致的方案。\n我们通过 @NacosValue 实现配置变更时自动注入新的值，然后通过配置监听器 @NacosConfigListener 主动刷新本地缓存的 List。这样配置更新后，系统无需重启，缓存也能保持和配置中心高度一致。\n\n\n\n\n\n\n",
+        "id": "IJP 面试-1746355448779"
+      },
+      {
+        "question": "项目困难（英文版）",
+        "answer": "Yes, one of the key challenges we faced during our transition from a monolithic architecture to a microservices-based one was around how to split responsibilities for authentication and authorization.\n\nIn our previous monolithic system, all the auth logic was centralized in a single application using Spring Security. We had two filter chains:\n\nOne for handling SSO-based login,\nAnother for JWT token validation.\nFor the JWT validation chain, we used a traditional whitelist approach to allow public endpoints that didn’t require authentication.\nWe also implemented fine-grained access control, where only specific roles like department admins or system admins could access certain endpoints. This was done through role-resource mapping tables.\nTo improve performance, we loaded the permission data into memory on startup using a global singleton cache, to avoid hitting the DB on every request.\n\nWhen we moved to microservices, the first big question was:\nHow do we split the previously centralized authentication and authorization logic?\n\nI took the initiative to research common microservices practices from Spring Cloud, Alibaba Cloud, Netflix, etc., and mapped out the responsibility boundaries of different components.\nThen I created an architecture draft and discussed it with the team. Based on our business needs, we finalized a clear solution:\n\nThe Gateway handles JWT validation and request routing.\nThe Auth-Service is a dedicated authentication center, responsible for login, SSO, and issuing JWTs.\nEach business service parses the user info from the JWT and applies its own fine-grained permission checks using its internal permission tables.\nDuring the design discussions, our leadership raised two key questions:\n\n1. Since the Gateway can parse JWTs, why not let it issue them too?\nHere's how I answered:\n\nTechnically, yes, the Gateway can issue JWTs.\nBut from a responsibility separation and security perspective, it’s not recommended.\n\nIssuing a JWT involves authentication logic — validating credentials, accessing user data, and using the private signing key.\nIf we let the Gateway handle that, it would become too powerful and increase the security risk.\n\nAlso, our login strategy is evolving — from basic username/password to SSO, and potentially QR-based login in the future.\nThe login logic is becoming more complex, and it makes sense to encapsulate it in a dedicated Auth-Service, keeping the Gateway lightweight and neutral.\n\n2. Since the JWT contains role info, why not let the Gateway handle permission checks?\nThis was really about whether the Gateway should handle fine-grained authorization.\n\nTechnically, yes, the Gateway can parse JWTs and check roles against permission rules. But doing so would tightly couple the Gateway with our business permission model.\n\nFor example, if we update a role’s permission, we’d have to update the permission table, configurations, and potentially Gateway logic too. That’s high maintenance and hard to reuse.\n\nSo we decided:\n\nThe Gateway only performs coarse-grained checks — like whether the JWT exists, is expired, or has a valid signature.\nThe business services handle fine-grained resource-level permission checks, based on their own needs and models.\nAnother practical issue we faced: growing whitelist entries\nAs the project grew, more public endpoints needed to be whitelisted.\nOriginally, we managed the whitelist in local config files like application.yml.\n\nBut that caused several problems:\n\nEvery change required code/config updates,\nServices had to be restarted,\nOps and config managers couldn’t adjust settings dynamically.\nSo we optimized this by using Nacos as our config center, enabling centralized and auto-refreshable whitelist management.\n\nHere's how we implemented it:\n1. Load config on startup\nWe used @ConfigurationProperties + @RefreshScope to inject whitelist entries from Nacos into a Spring Bean. Spring Boot automatically binds the remote config.\n\n2. Cache in memory for performance\nSince whitelist checks happen on every request (in Gateway or interceptors), reading from Nacos each time isn’t viable.\nSo we cached the config in memory as a List and did in-memory path matching.\n\n3. Auto-refresh on config changes\nUsing Spring Cloud Alibaba, we leveraged @RefreshScope so when we update the whitelist in Nacos and publish it, the Spring Bean is automatically refreshed — no restart or manual steps needed.\n\nThe results were very positive:\n\nOps and testers can modify the whitelist directly in Nacos;\nChanges take effect immediately without deployment;\nRequest performance is unaffected, since we use in-memory cache;\nDevelopers don’t need to worry about config loading logic.\nWe also added a small enhancement: logging the updated config after each change — so we can trace changes easily for debugging or auditing.\n\nFollow-up: How do we ensure the local cache stays consistent after a whitelist update?\nGood question.\n\nWhile @RefreshScope and @ConfigurationProperties can refresh the Bean’s properties, they don’t automatically notify your custom cache logic.\nSo if another component is using a cached List, it might still hold onto the old data.\n\nTo solve this, we implemented a config listener + local cache updater strategy.\n\nWe used @NacosValue to inject new values on change, and a @NacosConfigListener to listen for updates.\nWhen a change is detected, we actively refresh the in-memory cache, ensuring high consistency between the local cache and the config center — all without restarting the service."
+      },
+      {
+        "question": "项目里用到的微服务组件？",
+        "answer": "我们主要用的是Spring Cloud Alibaba 的组件，注册中心用的Nacos，配置中心用的也是nacos，网关用的spring cloud gateway， 熔断降级用的Sentinel,分布式事务用的Seata，服务调用用的OpenFeign。\n而实际的 客户端负载均衡，是由 Spring Cloud 提供的 LoadBalancerClient（默认实现是 RoundRobin） 来完成的。\n\n所以我们并不需要显式引入 Ribbon，Spring Cloud Alibaba 会自动集成 Spring Cloud LoadBalancer。\n\nWe primarily use components from Spring Cloud Alibaba.\nFor service discovery, we use Nacos; for configuration management, we also use Nacos.\nOur API Gateway is based on Spring Cloud Gateway,\nSentinel is used for circuit breaking and fallback,\nSeata is used for distributed transactions,\nand OpenFeign is used for inter-service communication."
+      },
+      {
+        "question": "你提到使用了Spring Cloud和微服务架构，请具体讲讲你是如何设计服务之间的调用机制的？为什么选择OpenFeign？(How did you design the inter-service communication mechanism? Why did you choose OpenFeign?)",
+        "answer": "在我们项目中，由于采用的是 Spring Cloud 微服务架构，系统被拆分成多个独立服务，像用户服务、权限服务等之间需要频繁调用。\n所以我们在设计服务间通信机制时，选择了 Spring Cloud 提供的 OpenFeign 组件，作为服务到服务之间的 HTTP 客户端。\n有几个核心原因：\n声明式调用，开发体验好：相比手写 RestTemplate 或 WebClient，Feign 提供了类似调用本地接口的方式，更符合面向接口编程的思想。\n与服务注册中心集成良好：我们用的是 Nacos 注册中心，Feign 能自动通过服务名去发现目标服务实例，不需要关心具体地址。\n内置支持负载均衡：Feign 默认集成了 Ribbon（或 Spring Cloud LoadBalancer），可以自动在多个实例之间进行负载均衡，提升系统可用性。\n可扩展性强：我们还集成了 Sentinel 做熔断限流，使用 Feign 的 fallback 机制实现服务降级，避免调用链雪崩。\n\n支持拦截器和统一传参：我们在调用链中统一传递 traceId、JWT 等请求头，通过 Feign 的拦截器机制实现了自动透传。\n\n---------------追问：\n1.Feign 和 RestTemplate 有什么区别？\nFeign 是声明式、自动服务发现；RestTemplate 是命令式，需要自己写 URL 和负载均衡逻辑\n2.Feign 怎么做超时控制？\n通过配置 feign.client.config 设置 connectTimeout 和 readTimeout\n3.如何做鉴权？\n可以在 Feign 拦截器中统一添加 JWT 或 Token 到请求头\n4.Feign 的 fallback 怎么实现？\n使用 Hystrix 或 Sentinel 的 fallback 机制，定义降级逻辑\n5.Feign 怎么打日志？\n通过配置 Feign 的日志级别（FULL）\n\n\nIn our project, since we're using a Spring Cloud microservices architecture, the system is split into multiple independent services — like user service, auth service, etc. These services need to communicate with each other frequently.\n\nTo handle this, we chose OpenFeign, a component provided by Spring Cloud, as our HTTP client for inter-service communication.\n\nThere are several key reasons for this decision:\n\nDeclarative syntax & great dev experience:\nCompared to manually writing RestTemplate or WebClient calls, Feign allows you to define interfaces and call them like local methods. It aligns well with interface-driven development.\n\nTight integration with service discovery:\nWe're using Nacos as our service registry. Feign can automatically discover target service instances by service name — no need to hardcode URLs.\n\nBuilt-in load balancing:\nFeign integrates with Ribbon or Spring Cloud LoadBalancer by default, so it can automatically balance requests across multiple instances, which improves availability.\n\nStrong extensibility:\nWe've also integrated Sentinel for circuit breaking and rate limiting. Feign's fallback mechanism allows us to implement graceful degradation and prevent cascading failures across services.\n\nInterceptor and header propagation support:\nWe use Feign interceptors to automatically propagate headers like traceId, JWT, and other contextual info across service calls.\n\nFollow-up Questions & Answers:\n1. What’s the difference between Feign and RestTemplate?\n\nFeign is declarative and supports automatic service discovery.\nRestTemplate is imperative, and requires you to manually write the URLs and implement your own load balancing logic.\n\n2. How do you configure timeouts in Feign?\nYou can set timeouts via configuration in application.yml or application.properties:\n\n3. How do you handle authentication with Feign?\nWe use Feign interceptors to automatically add JWT or access tokens into the request headers before each call.\n\n4. How is fallback implemented in Feign?\nFeign supports fallback via Hystrix or Sentinel.\nYou define a fallback class that implements the same interface and contains logic to handle failures gracefully.\n\n5. How do you enable logging for Feign?\nYou can configure the logging level in your config file\n"
+      },
+      {
+        "question": "你提到了引入任务状态机和线程池资源隔离机制，请详细说明状态机的设计思路，以及如何提高系统稳定性的？",
+        "answer": "最初这些任务的状态是通过字段+if-else 控制的，状态管理分散在业务代码中，耦合严重、可维护性差、状态跳转不可控。而且一旦任务量变大，还容易出现并发冲突、状态错乱、资源争抢等问题。\n\n所以后来我们引入了一个任务状态机模型（Task State Machine），统一管理任务的生命周期和状态变更逻辑.我们的状态机基于“事件驱动”模型，每个任务有明确的状态定义和事件触发机制\n我们是自研的轻量级状态机，基于状态枚举 + 事件映射表，也考虑过使用 Spring Statemachine 但太重。\n\n"
+      },
+      {
+        "question": "限流和幂等性处理是如何实现的？使用了哪些策略或中间件？",
+        "answer": "平台需要处理大量的跨区域数据协同计算任务，这些任务通常伴随着接口重复调用情况。\n例如：大量用户同时触发任务计算、查询任务状态；\n前端页面频繁刷新请求任务状态，造成接口压力；\n后台任务调度模块高并发触发计算操作。\n为了保障系统的稳定性和数据一致性，Spring Cloud Gateway 层限流，设定 QPS、并发数等阈值，防止接口被刷爆，限流后返回友好提示，避免系统雪崩。RocketMQ 异步解耦 + 限速消费：\n\n将部分操作（如通知、日志）异步投递到 MQ\n\n幂等性处理的问题出现在：\n用户重复点击“发起任务”按钮；\n网络抖动导致前端重试请求；\nRocketMQ 消息消费可能出现重复消费。\n处理方式:\n幂等 Token 校验机制：\n前端在发起关键接口请求（如任务创建）前，先向服务端申请幂等 Token；\n每个请求必须携带 token，后端使用 Redis setnx 进行去重校验，保证操作只被执行一次；\n请求处理成功后，立即删除该 token，防止重复提交。\n数据库唯一约束 + 乐观锁：\n\n针对任务实体，使用业务唯一标识（如 taskId + userId）作为唯一索引；\n插入或更新操作前校验是否已存在，避免重复写入或状态异常。\n\nRocketMQ 消息幂等处理：\n每条消息设置唯一 messageId，消费者处理消息时先检查 DB 是否已处理；\n避免因消息重试导致任务或通知被重复执行。"
+      },
+      {
+        "question": "在项目中，为什么选择RocketMQ而不是Kafka或RabbitMQ？",
+        "answer": "在我负责的【HSBC 隐私计算管理平台】项目中，平台涉及多个模块之间的异步通信，比如任务发起后的注册通知、日志收集、状态回调等操作，属于典型的非实时、强可靠性、可追溯的消息场景。\n\n为了解耦模块、提升系统性能和可靠性，我们引入了消息中间件。经过对比，我们最终选择了 RocketMQ，而不是 Kafka 或 RabbitMQ，主要基于以下几个考虑：\n高可靠性：任务和通知类消息不能丢，必须保证投递成功或明确失败。\n高可用性：平台是分布式部署，要求 MQ 支持集群容灾和故障转移。\n消息顺序支持：部分任务状态推进存在顺序要求。\n消费幂等保障：支持消息唯一 ID，方便做幂等消费。\n易于运维和监控：希望有完善的管理控制台。\n\n为什么选择它是因为：\n原生支持事务消息，适合我们“任务 + 数据写入”场景，保障一致性；\n支持消息回溯、重试、死信队列，便于故障排查；\n与 Spring Boot、Spring Cloud 集成简单（我们使用了 spring-boot-starter-rocketmq）；\n消费者端支持 Tag 过滤，减少不必要的消费开销。\n\n通过引入 RocketMQ，我们实现了业务模块的解耦，让任务状态通知、日志上报等操作全部异步化，系统响应速度提升约 30%，同时也大大提升了系统的可靠性和可维护性。\n消息投递成功率达到 99.99%，平台整体稳定性显著提升。\n\nRocketMQ 怎么保证消息不丢？\nProducer ACK + 重试机制 + Broker 落盘机制 + 死信队列\n\n如何实现幂等消费？\n使用 messageKey 或 msgId 作为 Redis 或 DB 的幂等 key\n\n\n怎么实现顺序消费？\n使用顺序消息（MessageQueueSelector），同一业务 key 进入同一队列\n\nRocketMQ 的事务消息是怎么做的？\nHalfMessage + 本地事务回查机制\n\n你们使用的是哪种消费模式？\n我们使用的是集群消费模式，确保同一消息只被一个消费者处理一次"
+      },
+      {
+        "question": "如何确保消息的“幂等消费”和“可靠送达”？你是如何设计消息重试机制的？",
+        "answer": "幂等消费：防止“一个消息被重复处理”\nRocketMQ 消息可能因为网络波动、消费异常而被重复投递；\n如果消费端没有幂等控制，可能会导致任务重复执行、数据重复写入等问题。\n\n1.通过消息唯一标识（msgId 或业务 ID）\n每条消息都携带唯一的业务 ID（如 taskId、orderId）；\n消费前检查 Redis 或数据库中是否已处理过该 ID。\n\n2.再加上数据库唯一约束\n在关键业务表中，对业务 ID 做唯一索引，防止重复写入；\n消费端即使重复执行，也不会造成数据重复。\n\n可靠送达：防止消息“丢失或漏处理”\n利用RocketMQ 的可靠机制：\n1.Producer 层确认机制\n使用 syncSend 模式，确保消息发送成功被 Broker 确认；\n失败时进行重试或记录失败日志。\n2.Broker 落盘机制\n消息写入 Broker 后会进行磁盘持久化，保障消息不丢。\n3.Consumer 确认机制\n消费完成后手动 ACK，只有业务处理成功后才确认消费；\n如果未 ACK，RocketMQ 会自动进行重投（默认最多 16 次）。\n4.死信队列（DLQ）\n当消息重试超过最大次数后，会进入死信队列；\n我们有定时任务监听 DLQ，并人工或自动补偿处理。\n\n消息重试机制设计\n消费端偶发网络异常、数据库连接失败等情况；\n不希望立即丢弃消息，而是“稍后再试”。\n\n重试机制设计：\n使用 RocketMQ 的自动重试机制\n\n设置最大重试次数（如 16 次），重试间隔指数增长；\n消费失败时抛出异常即可触发重试。\n超出重试次数进入死信队列（DLQ）\n\n我们定期扫描 DLQ，通过邮件/告警提示；\n对于可自动恢复的场景，设计了补偿消费服务，从 DLQ 中重新消费。\n避免重试风暴\n\n每次消费失败后进行延迟重试（默认 RocketMQ 内部支持）；\n在业务上做幂等控制，确保重复消费不会产生副作用。\n\n"
+      },
+      {
+        "question": "Redux在你项目中是如何组织的？你是如何避免Redux中状态混乱或过度依赖的？",
+        "answer": "在我参与的【HSBC 隐私计算管理平台（前端）】项目中，我们采用了前后端分离架构，前端使用 React + Redux 技术栈。由于系统包含多个模块（如任务管理、权限管理、数据可视化等），页面间存在大量的共享状态和跨组件通信需求，因此我们使用 Redux 来统一管理全局状态。\n\n 我们主要用 Redux 管理以下几类状态：\n用户登录态、权限信息（如 userInfo、token、roleList）\n当前选中的任务、任务详情、任务状态\n页面级 UI 状态（如加载中、分页状态、筛选条件）\n实时推送数据（通过 WebSocket 更新 Redux）\n\n我们按照 功能模块划分（Feature-based） Redux 结构：\n每个模块使用 createSlice（来自 Redux Toolkit）组织 reducer + action；\n使用 combineReducers 合并模块 reducer；\n所有异步请求统一使用 createAsyncThunk 管理副作用逻辑，确保 action 类型统一、可追踪。\n\nRedux 最大的痛点之一是状态混乱、命名冲突、状态不可控。我们在项目中采取以下策略避免这些问题：\n1. 命名空间隔离（sliceName.key）\n每个模块的状态都在自己的 slice 下，避免全局命名冲突；\n使用统一的命名规范，如 taskList.loading、auth.userInfo。\n✅ 2. 状态结构平铺（Flat State）\n避免嵌套过深的数据结构，保持状态结构扁平，方便维护和调试。\n✅ 3. 使用 TypeScript 强类型约束\n所有的 state、action、payload 都定义接口和类型，避免误用；\n结合 Redux Toolkit 的类型推导，提升开发效率和可维护性。\n✅ 4. 集成 Redux DevTools + 日志中间件\n实时追踪状态变化、调试方便；\n结合 redux-logger 输出关键状态变更，便于排查问题\n\n\n避免 Redux 过度依赖的实践\n我们清晰地区分了哪些状态需要放 Redux，哪些应该本地管理，避免“什么都放 Redux”的反模式。\n\n✅ 1. UI 组件内部状态使用 useState\n比如弹窗开关、输入框内容、临时标记等，不放 Redux；\n避免 Redux 成为“万能垃圾桶”。\n✅ 2. 页面局部状态使用 useReducer\n某些复杂表单的状态，仅影响当前页面，不必进入全局状态树。\n✅ 3. 缓存类数据不放 Redux，使用 React Query / SWR 管理\n比如查询接口返回的分页列表，我们使用缓存库自动缓存 + 异步状态；\n减少 Redux 的冗余代码，提高响应速度。\n✅ 4. 对 Redux 状态进行定期清理（如退出登录清空）\n避免旧数据残留导致状态污染。\n\n通过模块化组织 Redux 状态、严格的命名规范和合理的状态管控，我们有效避免了 Redux 状态混乱；\n同时通过限制 Redux 的使用范围，保持了代码的简洁性和可维护性；\n最终我们实现了一个稳定、高性能、可调试、易扩展的状态管理体系，支撑了 20+ 页面复杂交互。\n\n"
+      },
+      {
+        "question": "页面性能优化方面，你提到了懒加载与代码分割，具体是如何实现的？使用了哪些工具或技术手段？",
+        "answer": "在我参与的【HSBC 隐私计算管理平台（前端）】项目中，平台包含大量模块（任务管理、权限管理、数据可视化、配置中心等），整体页面数量超过 20+，初期构建时存在首屏加载慢、打包体积大、无效代码加载等问题。\n\n所以我们针对路由模块、组件模块、图表模块进行了系统性的**懒加载（Lazy Load）和代码分割（Code Splitting）**优化，显著提升了页面首屏加载速度和交互性能。\n\n✅ 一、为什么要做懒加载和代码分割？\n页面首次加载时加载了大量用不到的 JS 和组件，导致 首屏白屏时间过长（>3s）；\n图表类组件（如 ECharts）体积大，仅在部分页面使用；\n用户进入不同模块时不需要提前加载整个平台的所有功能。\n\n二、具体技术实现方式\n✅ 1. 路由级代码分割\n我们使用 React Router + React.lazy + Suspense 实现路由级按需加载：\n\n页面首次进入时只加载当前路由对应的组件；\n其他模块在用户访问时再异步加载；\n减少了首屏 JS 体积，提升首屏加载速度约 60%。\n\n ✅ 2. 第三方组件懒加载（如图表库）\nECharts、Monaco Editor 等大体积依赖仅在需要的页面中动态 import：避免在主包中引入这些组件，打包体积减少约 30%。\n\n✅ 3. 组件级懒加载（比如弹窗、配置面板）\n对于某些不常出现的弹窗、侧边栏等 UI 组件，也使用 React.lazy + Suspense 将其动态加载；\n保证主页面逻辑不被阻塞。\n\n✅ 四、最终优化效果\n页面首屏加载时间从 3.2s 降低到 1.2s；\n总打包体积从 2.1MB 降低到 1.3MB；\n用户在切换模块时加载更快，页面响应更流畅；\n用户满意度提升，开发效率也更高（按需开发模块即可）。\n\n"
+      },
+      {
+        "question": "WebSocket实时推送功能是如何实现的？如何处理连接断开或重连问题？",
+        "answer": "平台包含大量的任务状态监控和实时推送需求，例如计算任务的执行状态、队列排队进度、结果回调等。\n\n由于传统的轮询方式存在延迟高、资源浪费大等问题，我们使用了 WebSocket 实现客户端与服务端的实时双向通信，显著提升了任务监控的实时性和系统响应能力。\n\n✅ 一、使用 WebSocket 的场景与目的\n实时监听任务状态变化，及时更新用户界面；\n实现任务状态的1 秒内实时推送，替代轮询；\n降低服务端接口压力，提升用户体验。\n\n✅ 二、WebSocket 实现方式（前端角度）\n✅ 1. 建立连接\n我们在 React 项目中封装了 WebSocket 管理模块，页面加载时建立连接：\n\n✅ 2. 消息推送处理\n后端推送的消息格式为 JSON（包含 taskId、status 等字段）；\n前端接收到消息后，分发到对应的任务组件进行状态更新；\n状态存储在 Redux 中，多个组件共享。\n\n✅ 三、断线重连机制设计\nWebSocket 本身是长连接，但在网络波动、服务器重启、用户切换页面时容易断开。我们设计了自动重连机制，确保连接的稳定性\n\n✅ 1. 检测断线\n监听 onclose 和 onerror 事件；\n也可以通过定时心跳（ping/pong）判断连接是否存活。\n✅ 2. 自动重连机制\n实现指数退避重连策略，避免频繁重连导致服务端压力；\n配合全局状态（如 Redux）保存连接状态，提示用户连接状态变化。\n\n✅ 四、稳定性优化\n1.心跳机制\n客户端定时发送 ping 消息，服务端响应 pong；\n若连续几次未响应，视为连接中断，自动重连。\n2.页面切换处理\n页面切换时不主动断开连接，保持长连接；\n页面销毁时清理 socket，避免内存泄漏。\n"
+      },
+      {
+        "question": "Axios模块封装时，如何统一处理错误？是否有做错误码规范？",
+        "answer": "我们封装了统一的 Axios 请求模块，用于处理全局请求、鉴权、超时、错误提示等逻辑。\n\n项目中接口非常多，为了保证请求处理一致性和错误处理规范性，我们对 Axios 做了系统性封装，统一处理了 HTTP 错误和业务错误，并结合错误码规范进行弹窗提示与调试支持。\n\n✅ 一、错误类型分类（为什么要统一处理）\n我们项目中错误大致分为三类：\n\n网络层错误（HTTP 层）\n\n如 401 未登录、403 无权限、404 接口不存在、500 服务异常等；\n这些错误通常由 Axios 抛出，我们在响应拦截器中统一处理。\n业务层错误（后端返回 code !== 0）\n\n比如 code=1001（参数非法）、1002（任务不存在）等；\n接口返回 200，但业务不成功，需自定义处理。\n未知异常或代码异常\n\n比如 JSON 解析失败、空指针、组件报错等；\n统一捕获后上报日志系统。\n\n✅ 二、错误码规范与处理策略\n和后端约定了一套统一的业务错误码规范，每个错误码代表特定业务语义，前端根据错误码做精准处理或提示。\n\n✅ 错误码示例：\n错误码\t含义\t前端处理方式\n1001\t参数缺失\t表单提示\n1002\t任务不存在\t跳转 404 页面\n1003\t权限不足\t弹窗提示\n1004\t操作频繁\t弹窗 + 按钮禁用\n2001\tToken 失效\t清空登录态 + 重定向登录页\n\n✅ 实际效果与收益\n通过对 Axios 的统一封装和错误码标准化处理，我们实现了：\n\n错误提示一致、用户体验统一；\n可快速定位问题、避免重复处理；\n开发效率提升约 30%，代码更易维护；\n用户满意度更高，系统更健壮。"
+      },
+      {
+        "question": "如果后端返回结构不一致，前端如何进行容错处理？",
+        "answer": "我们与多个后端服务对接，不同服务由不同成员维护，接口规范虽然有统一文档，但实际返回结构还是存在一定差异，常见问题包括字段缺失、字段类型不一致、data 为 null、code 不规范等。\n\n为了保证前端页面的稳定性和健壮性，我们在接口封装层和组件渲染层都做了系统性的容错处理策略。\n\n✅ 一、为什么会出现结构不一致？\n多人协作，接口开发标准不统一；\n后端版本更新未同步通知前端；\n某些接口在异常或无数据时返回格式与正常时不同；\n某些字段后端返回 null/undefined，而前端期望是数组或对象。\n\n✅ 二、常见的结构不一致问题分类\n问题类型\t示例\t潜在影响\n字段缺失\tres.data.list 不存在\t页面渲染报错\n字段类型错误\tres.data.total 是字符串而不是数字\t分页异常\n返回 null\tres.data = null\t解构时报错\ncode 字段不规范\t未返回 code 或返回字符串\t拦截器判断失效\n嵌套结构变化\tres.data.list 变成 res.list\t页面数据渲染错误\n\n✅ 三、前端容错处理策略（重点）\n✅ 1. Axios 拦截器中统一兜底\n使用 ?? 运算符给 code/data 设置默认值；\n避免直接解构 undefined 报错；\ncode 不是数字也能容忍处理。\n\n✅ 2. 组件中使用默认值防御式编程\n对所有外部数据进行类型校验；\n保证组件逻辑在数据异常时也能“安全渲染”。\n\n✅ 4. 接口层统一格式化返回数据（服务封装）\n所有接口的返回结构在封装层统一；\n上层组件始终拿到标准结构，避免重复处理。\n\n通过这些容错处理策略，即使后端出现结构变化或临时 bug，也不会导致前端页面崩溃；\n我们的系统在上线后也曾遇到过“返回 null”、“code 缺失”等问题，前端都能自动降级处理，系统稳定性提升显著，用户无感知。\n\n---- 追问 ------\n1.如果后端返回 null，你怎么处理？\t\n设置默认值、类型判断、safeGet 等方式防止崩溃\n2.有没有配合后端做接口结构规范？\n有，使用 Swagger + 错误码约定文档，接口返回结构统一\n3.有没有用 TypeScript 做类型防御？\n有，定义接口类型 + 类型缩小（typeof / Array.isArray）\n4.用户看到错误时会提示吗？\n是的，业务错误有 toast 提示，结构异常自动降级处理\n"
+      },
+      {
+        "question": "有没有遇到过需求频繁变更的情况？你是如何在项目中应对的？",
+        "answer": "是的，在我参与的【HSBC 隐私计算管理平台】项目中，确实遇到过多次需求频繁变更的情况，尤其在任务配置流程、权限控制、结果可视化模块中，变更比较集中。\n\n✅ 我如何应对这些频繁变更？\n✅ 1. 技术架构上：提前做可扩展性设计，例如\n后端：我们引入了任务状态机模型，将状态流转抽象为配置驱动，避免每次状态变更都改逻辑代码；\n前端：基于 Redux 管理任务状态，状态渲染与业务逻辑解耦，方便后续支持图形化展示；\nWebSocket 推送：我们封装了统一的推送消息格式，消息类型可扩展，前端基于 type 做分发处理，支持热插拔新功能。\n\n✅ 2. 协作流程上：推动建立需求冻结窗口 + 预研机制\n面对频繁变更，我主动与产品沟通影响评估，推动设立版本冻结点，避免上线前大改；\n在需求不明确时，我会主动做技术预研或 DEMO，帮助产品验证方向，减少返工；\n同时推动使用接口文档平台（如 Swagger），确保接口结构稳定，便于前后端同步。\n\n✅ 3. 代码层面：封装复用 + 模块解耦\n前端组件和后端接口都做到模块化拆分，避免“牵一发而动全身”；\n比如任务状态展示组件、WebSocket 消息处理函数，都能复用和独立维护；\n后端任务调度逻辑也做了策略模式封装，支持不同任务类型的扩展。\n\n通过这种方式，我们在需求不断变化的情况下，系统依然保持了稳定性与可维护性；\n平均每次需求变更的开发成本控制在原来的 60% 以内，交付周期也没有因为频繁调整而延误；\n\n\n----- 追问 ----\n1.你有没有因为变更导致延期？\n期？\t有延误风险时，我会提前评估并与产品确认范围，通常能控制在计划内\n\n2.有没有因为接口变化导致返工？\n前期有过，后期引入 Swagger + Mock，接口结构稳定后基本杜绝返工\n\n3.你更关注前端还是后端的可扩展？\n两者都关注，我会从数据模型/接口协议/状态流转等角度整体考虑扩展性"
+      },
+      {
+        "question": "在多个项目之间切换时，你是如何管理时间和任务优先级的？",
+        "answer": "多项目在时间上是并行推进的，开发节奏、技术栈、交付内容都不同，因此需要我具备较强的时间管理和任务优先级判断能力。\n\n✅ 我的任务管理策略\n✅ 1. 优先级判断：根据重要性 + 紧急程度打标签\n上线相关任务优先级最高，临时任务则评估是否能延期或拆分。\n\n✅ 2.列清楚项目排期\n列出待办事项、截止时间和依赖方，每天早上花 10 分钟更新任务进展；\n\n✅ 3. 任务拆解和模块化交付\n将大任务拆分成小模块，确保每个空闲时间段都能推进一点；\n对于前端模块或后端脚本，尽量提前抽象出可复用的通用能力，减少重复劳动。\n\n✅ 4. 跨团队沟通同步\n每个项目我会设立“对接人”，每周同步进展和风险；\n出现冲突时，及时与项目负责人沟通优先级调整，确保不盲目并行。\n\n通过这种方式，我通常多项目并行阶段依然保持了稳定的交付节奏，也让我养成了：**“提前计划、合理拆解、主动同步”**的工作习惯，\n面对多任务切换不再焦虑，而是更有节奏感。\n\n\n-- 追问 -- \n1.有没有因为切换太频繁导致效率低下？\n有过，但我通过时间块管理法尽量减少上下文切换损耗\n\n2.任务冲突时怎么处理？\n与项目负责人沟通，基于影响权重和时间节点做协调\n\n3.如何判断任务优先级？\n结合影响范围、是否上线相关、是否阻塞他人等维度评估\n\n4.用了哪些工具？\nJira、Outlook 日历、Git commit list等\n\n5.有没有总结出什么经验？\n模块化设计 + 主动同步进度 + 降低切换成本，是关键要素"
+      },
+      {
+        "question": "你是如何处理Token刷新或过期问题的？",
+        "answer": "✅ 我们的 Token 机制设计：\n登录成功后，服务端返回 Access Token（短效） + Refresh Token（长效）\nAccess Token 用于访问资源接口（有效期如：15 分钟）\nRefresh Token 用于刷新 Access Token（有效期如：7 天）\n所有 Token 都存储在前端（内存 / Cookie / localStorage，根据安全需求）\n\n✅ 我是如何处理 Token 过期与刷新的：\n✅ 前端处理逻辑：\n对 401 错误进行拦截\n请求失败时，自动调用刷新接口获取新 Token\n成功后重试原始请求，失败则跳转登录页\n\n✅ 后端处理逻辑（Spring Security + JWT）：\n通过 OncePerRequestFilter 拦截请求，验证 Token 是否过期\n提供 /auth/refresh 接口，校验 Refresh Token，有效则签发新 Access Token\nRefresh Token 存数据库\n\n\n"
+      }
+    ],
+    "英文技术面试题": [
+      {
+        "question": "What’s the difference between HashMap and ConcurrentHashMap?\n（HashMap 和 ConcurrentHashMap 有什么区别？）",
+        "answer": "The key difference is that HashMap is not thread-safe, while ConcurrentHashMap is.\n\nIn a multithreaded environment, using HashMap without external synchronization can lead to data inconsistency or even infinite loops due to concurrent modifications.\n\nConcurrentHashMap, on the other hand, is designed for concurrency. It uses a finer-grained locking mechanism — in Java 8 and above, it uses synchronized blocks and CAS operations at the bucket level, which allows multiple threads to operate on different segments of the map simultaneously.\n\nThis design improves performance and scalability under concurrent access.\n\nSo, for single-threaded use cases, HashMap is fine. But for multi-threaded scenarios where you need safe concurrent access, ConcurrentHashMap is the better choice.\nAlso, ConcurrentHashMap does not allow null keys or null values, while HashMap allows one null key and multiple null values."
+      },
+      {
+        "question": "How does Spring Boot auto-configuration work?（Spring Boot 自动配置如何工作？）\n",
+        "answer": "Spring Boot’s auto-configuration works by automatically configuring Spring beans based on the libraries available in the classpath and the configuration defined in application.properties or application.yml.\n\nIt’s enabled by the @EnableAutoConfiguration annotation, which is included in @SpringBootApplication.\n\nUnder the hood, Spring Boot scans spring.factories.\n\nThese configuration classes are typically annotated with condition annotations like @ConditionalOnClass, @ConditionalOnMissingBean, and @ConditionalOnProperty — so Spring only applies them when certain conditions are met.\n\nThis makes the application startup behavior dynamic and flexible.\n\nIf needed, we can also disable certain auto-configurations using the exclude attribute on @SpringBootApplication.\n"
+      },
+      {
+        "question": "What is the difference between @Component, @Service, and @Repository?(@Component、@Service 和 @Repository 之间有什么区别？)",
+        "answer": "@Component, @Service, and @Repository are all stereotype annotations in Spring. They are used to mark classes as Spring beans, and are detected automatically via component scanning.\n\nTechnically, all of them are functionally equivalent because they are all specializations of @Component. However, they serve different semantic purposes:\n\n@Component is a generic annotation for any Spring-managed class.\n@Service is intended for service layer classes — it doesn't add extra behavior but indicates that the class holds business logic.\n@Repository is used for persistence layer classes and includes an additional feature: it enables Spring to translate database exceptions into Spring’s unified DataAccessException hierarchy.\nUsing the appropriate annotation improves code clarity and aligns with the layered architecture pattern.\n\n"
+      },
+      {
+        "question": "How is dependency injection implemented in Spring?(Spring中依赖注入是如何实现的？)",
+        "answer": "In Spring, dependency injection is implemented through the Inversion of Control (IoC) container.\nInstead of creating objects manually, Spring manages the lifecycle and relationships between objects (beans), and injects dependencies automatically where needed.\n\nSpring supports constructor injection, setter injection, and field injection. Constructor injection is generally preferred for required dependencies because it promotes immutability and makes unit testing easier.\n\nDevelopers typically use annotations like @Component to define beans and @Autowired to inject them. Spring scans the classpath for such annotations, registers the beans in the ApplicationContext, and uses reflection to inject dependencies at runtime.\n\nTo handle multiple candidates of the same type, Spring provides @Qualifier and @Primary.\n\nOverall, Spring's DI mechanism decouples components and makes applications more modular and testable."
+      },
+      {
+        "question": "What’s the difference between synchronous and asynchronous processing in Spring?(Spring中同步处理和异步处理有什么区别？)",
+        "answer": "In Spring, synchronous processing means that the caller waits for a method to complete before continuing. The method runs on the caller’s thread.\n\nAsynchronous processing allows a method to run in a separate thread, so the caller can continue without waiting.\n\nSpring supports asynchronous execution via the @Async annotation. To use it, we annotate the method with @Async and enable it with @EnableAsync.\n\nAsynchronous methods can return void, Future, or CompletableFuture. Behind the scenes, Spring uses a TaskExecutor to manage the thread pool.\n\nThis is especially useful for long-running or non-blocking tasks, like sending emails or calling external services.\n\n"
+      },
+      {
+        "question": "How do you design communication between microservices?(如何设计微服务之间的通信？)",
+        "answer": "I use Spring Cloud OpenFeign for synchronous HTTP communication between microservices.\nIt allows me to declare remote service interfaces like local method calls, which greatly simplifies cross-service interactions.\n\nOpenFeign integrates well with Spring Cloud components like Eureka for service discovery and Resilience4j for fault tolerance.\n\nI typically define a @FeignClient interface, and Spring will generate a proxy to make the REST call.\nFor reliability, I also apply circuit breakers, timeouts, and retries using Resilience4j or Spring Retry."
+      },
+      {
+        "question": "Why did you choose OpenFeign over RestTemplate?(为什么选择 OpenFeign 而不是 RestTemplate？)",
+        "answer": "I chose OpenFeign over RestTemplate primarily because it’s declarative, concise, and integrates tightly with Spring Cloud.\n\nWith OpenFeign, I can define service clients using interfaces and Spring MVC annotations, which makes the code more readable and easier to maintain.\nIt also supports service discovery, load balancing, and fault tolerance out of the box.\n\nIn contrast, RestTemplate requires more boilerplate code and manual configuration for these features.\nMoreover, RestTemplate is being phased out in favor of WebClient and Feign in modern Spring projects."
+      },
+      {
+        "question": "How do you ensure service availability and fault tolerance?(如何确保服务可用性和容错性？)",
+        "answer": "In our Spring Cloud Alibaba architecture, we use OpenFeign for service communication and Nacos for service discovery.\nFor client-side load balancing, we rely on Spring Cloud LoadBalancer, which automatically integrates with Nacos and OpenFeign to select service instances using the RoundRobin strategy by default."
+      },
+      {
+        "question": "How do you handle distributed transactions?(如何处理分布式事务？)",
+        "answer": "In our system, we use Seata to handle distributed transactions across multiple microservices.\nWhen a business operation spans services like Order, Account, and Inventory, I annotate the entry method with @GlobalTransactional.\nSeata automatically tracks and manages each local transaction as a branch.\n\nIf any branch fails, Seata initiates a global rollback to maintain data consistency.\nWe use AT mode, which works well with relational databases and requires minimal code changes.\n\nThis approach allows us to ensure strong consistency without writing complex TCC logic manually.\n\n"
+      },
+      {
+        "question": "What’s your experience with service discovery and configuration management?(您在服务发现和配置管理方面有什么经验？)",
+        "answer": "I have extensive experience using Nacos for both service discovery and configuration management in our projects.\n\nFor service discovery, each microservice registers with Nacos at startup, and other services discover it by name.\nWe use OpenFeign to communicate between services, and Nacos provides dynamic service registration and load balancing.\n\nFor configuration, we use Nacos Config to centralize and manage application properties.\nBy using @RefreshScope, we support dynamic config updates without restarting services.\nWe organize configs using Data IDs, Groups, and Namespaces to separate different environments and modules.\n"
+      },
+      {
+        "question": "How do you design indexing for performance optimization?(如何设计索引来优化性能？)",
+        "answer": "When designing indexes, I always start by analyzing the query patterns and identifying performance bottlenecks using tools like EXPLAIN.\nI create single-column or composite indexes based on the most frequent filters, joins, and sorts.\nI follow best practices like the left-most prefix rule for composite indexes, and avoid over-indexing to reduce write overhead.\n\nI also monitor index usage and periodically review them as the application evolves.\nIn one of my projects, I optimized a slow query on the orders table by creating a composite index on (user_id, created_at), which reduced query time from 2 seconds to under 100 milliseconds."
+      },
+      {
+        "question": "What are cache penetration, breakdown, and avalanche? How do you prevent them?(什么是缓存穿透、缓存击穿和缓存雪崩？如何预防？)",
+        "answer": "In high-traffic systems, I've encountered and mitigated common cache issues like penetration, breakdown, and avalanche.\n\nFor cache penetration, I use Bloom filters to block invalid keys and cache null values to avoid repeated DB hits.\nFor cache breakdown, I implement mutex locks or logical expiration strategies to ensure only one request rebuilds the cache.\nTo prevent cache avalanche, I use randomized TTLs and preload hot data after service restarts.\nThese strategies help maintain system stability and protect the database from sudden overloads."
+      },
+      {
+        "question": "How would you design a URL shortening service like bit.ly?(您将如何设计像 bit.ly 这样的 URL 缩短服务？)",
+        "answer": "I’d design a URL shortening service with an API-based backend that allows users to submit long URLs and receive short, unique aliases.\nI'd use a Base62 encoding of a unique ID to generate short codes, and store the mappings in a relational database with a Redis cache in front for fast redirection.\n\nRedirects would check the cache first and fallback to the DB if needed.\nFor scalability, I’d horizontally scale API servers, shard the database, and use a CDN or edge cache for popular URLs.\n\nI’d also implement rate limiting and monitoring to prevent abuse, and optionally support features like custom aliases, expiration, and click analytics."
+      },
+      {
+        "question": "How would you handle high concurrency in a login  system?(您将如何处理登录系统中的高并发性？)",
+        "answer": "To handle high concurrency in login systems, I use Redis for session/token caching and JWT for stateless authentication. I also implement rate limiting, asynchronous logging, and connection pooling to protect the DB.\n\nFor flash sales, I preload stock in Redis and use Lua scripts for atomic decrement operations.\nI decouple order creation using message queues like Kafka to avoid DB write spikes and ensure eventual consistency.\nAdditional measures include dynamic paths, CAPTCHA, deduplication using Redis, and rate limiting at the gateway level.\n\nThese techniques ensure the system remains stable, responsive, and secure under extreme load.\n\n"
+      },
+      {
+        "question": "How do you design a highly available and scalable architecture?(如何设计高可用性和可扩展性的架构？)",
+        "answer": "To design a highly available and scalable architecture, I focus on eliminating single points of failure, enabling horizontal scaling, and using asynchronous processing where possible.\n\nI deploy services behind load balancers, use stateless microservices to scale horizontally, and cache frequently accessed data with Redis.\nFor databases, I use replication for high availability and sharding for scalability.\nI also incorporate monitoring, circuit breakers, and auto-scaling to ensure resilience under load.\n\n"
+      },
+      {
+        "question": "What’s the difference between authentication and authorization?(身份验证和授权有什么区别？)",
+        "answer": "Authentication is about verifying the identity of a user — making sure they are who they claim to be, typically via login credentials or tokens.\nAuthorization, on the other hand, is about determining what permissions or access levels that authenticated user has.\n\nFor example, after a user logs in (authenticated), the system might check whether they’re allowed to perform sensitive operations like deleting a record (authorization).\nBoth are critical for securing applications but serve distinct roles in the access control process."
+      },
+      {
+        "question": "Why is it not a good idea to let the API Gateway handle token issuing?(为什么让 API 网关处理令牌发放不是一个好主意？)",
+        "answer": "It's generally not a good idea to let the API Gateway handle token issuing, because it violates the principle of separation of concerns.\nToken issuance involves sensitive logic like credential validation and secret management, which should be handled by a dedicated authentication service, not the gateway.\n\nLetting the gateway issue tokens increases the attack surface and tightens coupling, making the system harder to scale and maintain.\nA better approach is to have the API Gateway validate tokens, while a separate Auth Service handles login and token issuance."
+      },
+      {
+        "question": "Have you used Docker or Kubernetes? How?(你用过 Docker 或 Kubernetes 吗？如何使用？)",
+        "answer": "Yes, I’ve containerized all our microservices using Docker, and deployed them to Alibaba Cloud Kubernetes (ACK).\nFor each service, I wrote a Dockerfile, pushed the image to Alibaba Cloud Container Registry (ACR), and managed deployments using Kubernetes YAML files.\n\nI’ve configured HPA, managed secrets and config via ConfigMap and Secret, used Ingress with Alibaba SLB\nWe also built a CI/CD pipeline using Jenkins + GitLab, so every code commit triggers an automatic build and deployment to ACK."
+      },
+      {
+        "question": "How do you manage deployment and configuration in different environments?(如何管理不同环境中的部署和配置？)",
+        "answer": "I manage deployment and configuration across environments using a combination of environment-specific configuration files, Kubernetes ConfigMaps and Secrets, and CI/CD pipelines.\n\nFor example, in our Kubernetes-based setup, we maintain separate config files and secrets per environment, and use GitLab CI to deploy to dev, staging, or prod based on the branch or tag.\nSecrets are managed securely using Kubernetes Secrets  and we use Helm templates to manage environment-specific differences.\n\nThis approach ensures clean separation between environments, secure secret handling, and reproducible deployments."
+      },
+      {
+        "question": "What’s your experience with CI/CD tools like Jenkins, GitLab CI, or GitHub Actions?(您对 Jenkins、GitLab CI 或 GitHub Actions 等 CI/CD 工具有何经验？)",
+        "answer": "I’ve extensively used Jenkins, GitLab CI, and GitHub Actions to automate the build → test → deploy pipeline.\nI ensure that each environment is isolated, secrets are secured, and rollbacks are possible.\n CI/CD pipelines help us release faster, reduce human error, and maintain high reliability across environments."
+      },
+      {
+        "question": "How do you handle disagreements within your team?(您如何处理团队内部的分歧？)",
+        "answer": "I handle disagreements by listening actively, focusing on facts, collaborating transparently, and always keeping the team’s shared goals in mind.\nI believe healthy debates improve quality — as long as they're managed with respect and empathy."
+      }
+    ],
+    "反问环节": [
+      {
+        "question": "What does the team structure look like? How many developers are currently in the team? （你们的团队结构是怎样的？目前有多少开发成员？）",
+        "answer": "Thanks for the explanation — that sounds like a well-organized setup.\nI’ve worked in similar team structures before, so I think I can adapt quite quickly."
+      },
+      {
+        "question": "What will be my main responsibilities if I join your team?\n（如果我加入，主要的职责是什么？）",
+        "answer": "That sounds good — those responsibilities align well with what I’ve been doing in my current role."
+      },
+      {
+        "question": "What does a typical day look like for a backend developer in your team?\n（你们团队的后端开发日常工作是怎样的？）",
+        "answer": "That sounds like a solid and efficient workflow. I’m quite comfortable with daily stand-ups, sprint planning, and collaborating across roles — we follow a similar process in my current team. I think I can fit in well and contribute right away."
+      },
+      {
+        "question": "Is there anything you expect from someone transferring internally that I should be aware of?\n（对于内部转岗的人，你们有什么特别的期望或建议吗？）",
+        "answer": "That’s totally understandable. While I’m familiar with the company’s overall culture and tools, I know that every team has its own way of working.\nI’ll make sure to stay open-minded, learn quickly, and contribute in a way that aligns with the team’s expectations."
+      },
+      {
+        "question": "为啥用这个名字？",
+        "answer": "My name comes from one of my favorite cartoons, Crayon Shin-chan. In the show, the main character's best friend is named Kazama, and his dream is to become someone who is useful to society. I really liked that, so I chose his name as my English name."
+      },
+      {
+        "question": "为什么要换工作？",
+        "answer": "I have accumulated a lot of experience in my current position. I hope to contact new fields through job transfer, learn more knowledge, and achieve self-breakthrough. Moreover, I am very interested in the technology and business direction involved in the new position, and I believe I can have better development."
+      },
+      {
+        "question": "能不能用中文回答？",
+        "answer": "Can I answer in Chinese? I'm worried that I may not describe some key points accurately."
+      }
+    ],
+    "java 集合": [
+      {
+        "question": "java 有哪些集合类",
+        "answer": "Java 集合类大致分为两大类：\n\n1️⃣ Collection 接口（存储 单个元素）\n子接口有：\nList：有序、可重复\nSet：无序、不重复\nQueue/Deque：队列、双端队列（FIFO）\n2️⃣ Map 接口（存储 键值对）\n\n📘 List 接口实现类\nArrayList\t基于数组，查询快，插入删除慢\nLinkedList\t基于双向链表，插入删除快，查询慢\nVector\t线程安全，性能差，已过时\nStack\t基于 Vector 的栈结构，后进先出（LIFO）\n\nSet 接口实现类\n类\t特点\nHashSet\t基于 HashMap，不保证顺序，元素唯一\nLinkedHashSet\t有插入顺序的 HashSet\nTreeSet\t基于红黑树，元素有序（按自然顺序或 Comparator）\nEnumSet\t枚举类型专用，高效\n\nQueue / Deque 实现类\n类\t特点\nLinkedList\t同时实现 List 和 Queue\nPriorityQueue\t支持优先级排序的队列\nArrayDeque\t高效的双端队列，不允许 null 元素\n\nMap 接口实现类\n类\t特点\nHashMap\t无序，允许 null key/value，线程不安全\nLinkedHashMap\t有插入顺序的 HashMap\nTreeMap\t基于红黑树，key 有序\nHashtable\t线程安全，但效率低，已过时\nConcurrentHashMap\t高并发场景推荐，线程安全、效率高\n\n\n✅ 四、线程安全集合类（并发包）\n类\t来自包\t特点\nVector、Hashtable\tjava.util\t老旧同步集合，不推荐\nCollections.synchronizedXXX()\tjava.util.Collections\t包装同步集合\nCopyOnWriteArrayList、CopyOnWriteArraySet\tjava.util.concurrent\t读多写少场景\nConcurrentHashMap\tjava.util.concurrent\t高并发 map\nConcurrentLinkedQueue\tjava.util.concurrent\t非阻塞队列\nBlockingQueue 系列\tjava.util.concurrent\t线程通信队列，如 LinkedBlockingQueue、ArrayBlockingQueue\n\n"
+      },
+      {
+        "question": "hashmap 的原理",
+        "answer": "HashMap 是基于数组 + 链表 + 红黑树实现的。每个键值对根据 key 的 hash 值定位到数组索引，如果发生冲突，会以链表的方式存起来。当链表长度超过 8 且数组容量大于 64 时，会转为红黑树来提升性能。插入时，如果容量超过阈值，会进行扩容操作，新数组容量是原来的两倍，并将原有元素重新分配位置。HashMap 是线程不安全的，适合单线程场景。JDK8 之后性能优化非常明显。\n\n--追问 --\nHashMap 初始容量和负载因子默认是多少？\t默认容量 16，负载因子 0.75\n为什么链表长度超过 8 会转红黑树？\t防止链表过长导致性能下降\n扩容时是否会重新计算 hash？\t不重新计算，只判断 (oldHash & oldCapacity)\nConcurrentHashMap 和 HashMap 有什么不同？\t线程安全机制不同（分段锁 vs CAS）\nHash 冲突多会发生什么？\t链表变长，性能下降，极端情况变为红黑树",
+        "id": "java 集合-1746488005920"
+      },
+      {
+        "question": "ArrayList和LinkedList 有什么区别",
+        "answer": "ArrayList 基于数组，查询快、增删慢，适合查询密集型场景；\nLinkedList 基于双向链表，增删快、查询慢，适合插入删除频繁的场景。\n\nArrayList 元素连续，不额外占用指针空间\nLinkedList 每个节点包含前后两个指针，内存消耗更大\n\n两者都不是线程安全的，需使用：\n或 CopyOnWriteArrayList（ArrayList 替代）\n或 ConcurrentLinkedDeque（LinkedList 替代）\n\n-- 追问 --\nArrayList 如何扩容？\t扩容为原来的 1.5 倍（JDK8）\nLinkedList get(int) 为什么慢？\t需从头或尾遍历到指定位置，时间复杂度 O(n)\nArrayList 删除一个元素后如何处理？\t后续元素统一前移，时间复杂度 O(n)\nLinkedList 可以作为栈或队列使用吗？\t可以，支持 addFirst、removeLast 等方法"
+      },
+      {
+        "question": "HashMap和HashTable有什么区别",
+        "answer": " 1. 线程安全\nHashMap 是非线程安全的，适用于单线程环境。\nHashtable 是线程安全的，但通过给每个方法加 synchronized 实现，性能较低。\n✅ 推荐使用 Java 5 引入的 ConcurrentHashMap 替代 Hashtable，支持高并发、分段锁/CAS，效率更高。\n 2. null 键值支持\nHashMap：允许一个 null 作为 key，多个 null 作为 value。\nHashtable：不允许 key 或 value 为 null，否则抛出 NullPointerException。\n3. 继承结构对比\nHashMap → AbstractMap（现代集合框架的一部分）\nHashtable → Dictionary（JDK 1.0 的旧类，已被淘汰）\n\n 4. 扩容机制\nHashMap：默认容量为 16，负载因子 0.75，扩容为原数组的 1.5 倍\nHashtable：默认容量为 11，负载因子 0.75，扩容为原数组的 2 倍 + 1\n\nHashMap 是非线程安全的、性能更高，允许 null 键值；而 Hashtable 是线程安全但效率较低，不允许 null，属于过时类，实际开发中推荐使用 HashMap 或 ConcurrentHashMap 替代。\n\n\n-- 追问 --\nHashMap 是线程安全的吗？\t否，需手动加锁或用 ConcurrentHashMap\n为什么 Hashtable 不允许 null？\t因为方法中使用 equals()，null 会导致异常\nConcurrentHashMap 与 Hashtable 的区别？\t分段锁/CAS 实现，效率更高，支持高并发\nHashMap 线程不安全会带来什么问题？\t多线程 put 可能导致数据丢失、死循环等问题"
+      },
+      {
+        "question": "ConcurrentHashMap 和HashTable 的区别",
+        "answer": "ConcurrentHashMap 和 Hashtable 都是线程安全的 Map，但 Hashtable 使用粗粒度的 synchronized，效率低；ConcurrentHashMap 使用分段锁或 CAS 实现，具有更高的并发性能\n\n4️⃣ 底层结构演进\nJDK 1.7 的 ConcurrentHashMap：\n使用 Segment 数组 + HashEntry 数组，分段锁设计\n每个 Segment 相当于一个小 Hashtable\nJDK 1.8 的 ConcurrentHashMap：\n移除 Segment，使用 Node 数组 + synchronized + CAS\n结构与 HashMap 更相似\n链表长度超过阈值后，转为红黑树（提高查找效率）\n\n\n\n-- 追问 --\nConcurrentHashMap 为什么更快？\t锁粒度小，读写分离，采用 CAS + synchronized\nJDK7 和 JDK8 的实现有何不同？\tJDK7 使用 Segment；JDK8 使用 Node + synchronized\n为什么 ConcurrentHashMap 不允许 null？\t会导致 get/put 判断歧义，不能区分 key 不存在和 value 为 null\nConcurrentHashMap 会出现死锁吗？\t不会，锁粒度小且使用非阻塞算法（CAS）避免死锁\n\n"
+      },
+      {
+        "question": "HashSet 和 HashMap 的区别",
+        "answer": "🧩 1. HashSet 的底层原理\nHashSet 本质是对 HashMap 的封装\n每个元素作为 HashMap 的 key，value 是一个固定的 Object 常量（如 PRESENT）\n✅ HashSet 的特点：\n元素唯一性由 HashMap 的 key 特性决定\n添加、删除、查找的时间复杂度为 O(1)\n\n🧠 2. HashMap 的原理简述\n存储结构是 key-value 对\n底层是一个数组 + 链表 + 红黑树（JDK8）\n通过 key 的 hash 值定位 bucket，解决 hash 冲突\n\nHashSet 是基于 HashMap 实现的，只存 key，不存 value；底层通过将元素作为 HashMap 的 key 来保证元素唯一性，而 HashMap 存储的是键值对，允许 value 重复但 key 不重复。\n\n-- 追问 --\nHashSet 如何保证元素唯一？\t底层使用 HashMap 的 key 机制，依赖 hashCode() 和 equals()\nHashSet 能否添加 null？\t可以，最多添加一个 null，作为 key 存入 HashMap\nHashSet 和 TreeSet 的区别？\tHashSet 无序，基于 HashMap；TreeSet 有序，基于 TreeMap（红黑树）\nHashSet 的底层结构和 HashMap 一样吗？\t是的，底层都是数组 + 链表 + 红黑树"
+      },
+      {
+        "question": "HashMap 的扩容机制",
+        "answer": "HashMap默认：\n初始容量（capacity）= 16\n负载因子（loadFactor）= 0.75\n所以默认 threshold = 16 × 0.75 = 12\n当 HashMap 中的元素数量超过 12，就会触发扩容。\n\n在扩容之后，所有原有元素需要重新计算位置（rehash），因为：\nHashMap 使用 位运算 来定位桶：index = (n - 1) & hash\n容量变了，index 也会变，元素位置就可能改变\n\nJDK8 优化点：\n新的索引只与 旧 hash 和旧容量的高位 有关：\n优点：避免重新计算 hash，提高扩容效率\n\n四、扩容对性能的影响\n影响\t说明\n⛔ 性能开销大\t扩容时需要遍历每个桶，复制所有节点\n✅ 插入更快\t扩容后减少了 hash 冲突\n✅ 查询更快\t链表长度变短，红黑树更少\n\n五、如何避免频繁扩容？\n初始化时合理指定容量\n\nHashMap 每当元素数量超过阈值（capacity × loadFactor）时会触发扩容，容量变为原来的 2 倍，并重新计算每个元素的位置（rehash），JDK8 中优化了 rehash 逻辑以提升性能。\n\n-- 追问 --\n扩容后元素位置一定会变吗？\t不一定，取决于 (hash & oldCap)\n扩容的时间复杂度？\tO(n)，因为每个元素都可能被重新分配位置\n如何避免频繁扩容？\t初始化时合理设置容量\n扩容一定是 2 倍吗？\t是的，从 JDK1.8 开始，默认扩容倍数为 2"
+      },
+      {
+        "question": "HashMap 在 jdk 1.7 和1.8 对比",
+        "answer": "在 JDK 1.7 中，HashMap 底层是数组 + 链表，哈希冲突时采用拉链法，链表过长会导致查询效率下降；而在 JDK 1.8 中，引入了红黑树，当链表长度超过阈值时自动转为红黑树，查询效率提升为 O(log n)。此外，JDK 1.8 对扩容的 rehash 过程进行了优化，避免了 hash 重新计算。JDK 1.7 在多线程下可能出现死循环问题，JDK 1.8 也对此做了改进。\n\n--追问--\nHashMap 在 JDK 1.8 为什么比 1.7 更快？\t使用红黑树优化查询性能；扩容时避免重新 hash\n红黑树什么时候触发？\t链表长度 > 8 且数组大小 >= 64\n为什么 JDK 1.7 会死循环？\t多线程扩容时链表插入顺序错乱，形成环\nHashMap 是线程安全的吗？\t否，如需线程安全请使用 ConcurrentHashMap"
+      },
+      {
+        "question": "ConcurrentHashMap  在 jdk 1.7 和1.8 对比",
+        "answer": "ConcurrentHashMap 在 JDK 1.7 中采用了 Segment + HashEntry 的分段锁结构，每个 Segment 使用 ReentrantLock 保证线程安全；而在 JDK 1.8 中，则采用了数组 + 链表/红黑树结构，使用 CAS 和 synchronized 替代了分段锁，锁粒度更细，性能更高，支持更高并发，是目前推荐使用的版本。\n\n\n-- 追问--\n为什么 JDK 1.8 放弃 Segment？\t简化结构 + 更高并发性能\nJDK 1.8 如何保证线程安全？\tCAS + synchronized + volatile\nConcurrentHashMap 的 put 是线程安全的吗？\t是的，JDK 1.8 使用 CAS 或同步块保证\nConcurrentHashMap 为什么不允许 null？\t无法区分 null 和 key 不存在，影响并发逻辑\nJDK 1.8 如何扩容？\t多线程协作扩容，使用 transferIndex 控制任务分配"
+      },
+      {
+        "question": "ConcurrentHashMap  的get 方法要不要加锁",
+        "answer": "在 JDK 1.8 中，ConcurrentHashMap 的 get() 方法是线程安全的，并且不加锁。它依赖于 value 字段的 volatile 修饰来保证可见性，同时由于 get() 不修改结构，只做只读操作，因此不需要加锁。而写操作如 put() 使用了 synchronized 和 CAS 来保证线程安全。另外，在并发场景下，写操作可能会导致扩容或树化，这些操作都已内部加锁处理，不影响 get() 的正确性。\n\n-- 追问--\nget() 为什么不加锁还能线程安全？\t只读 + volatile + 写时同步保证结构一致\nget() 会读取到中间状态数据吗？\t不会，value 是 volatile，结构稳定\n写操作未完成时，get() 会读取到什么？\t要么旧值，要么新值，不会出错或抛异常"
+      },
+      {
+        "question": "能否解释一下HashMap和ConcurrentHashMap的实现差异？",
+        "answer": "HashMap和ConcurrentHashMap的核心差异在于线程安全性和并发性能。\nHashMap非线程安全，多线程操作需外部同步。而ConcurrentHashMap在Java 8后通过CAS和synchronized锁单个桶头节点，实现细粒度锁，显著提升并发度。\n此外，ConcurrentHashMap不允许null键值，迭代器是弱一致性的，且支持多线程协助扩容，避免链表成环。这些设计使其在并发场景下更高效可靠。"
+      }
+    ],
+    "消息队列": [
+      {
+        "question": "什么是消息队列",
+        "answer": "消息队列是一种基于异步通信的中间件，用于在分布式系统中传递消息，实现系统解耦、异步处理和流量削峰。它通过生产者发送消息、消费者异步消费消息的方式，提高系统的可扩展性和稳定性。常见的消息中间件包括 Kafka、RabbitMQ、RocketMQ 等，常用于任务处理、日志收集、延时任务等场景。\n\n\n--追问--\n什么是消息队列？\t用于系统间异步通信、解耦、削峰等的中间件\n消息队列的优缺点？\t解耦、异步、削峰 vs 系统复杂、幂等性处理\nKafka 和 RabbitMQ 区别？\tKafka 高吞吐、适合日志分析；RabbitMQ 功能丰富、低延迟\n消息队列如何保证不丢消息？\t消息持久化、ACK 确认机制、重试机制\n如何保证消息幂等？\t消息唯一 ID + 去重机制（数据库唯一索引、Redis判断等）",
+        "id": "消息队列-1746493406164"
+      },
+      {
+        "question": "消息队列的一些核心术语？",
+        "answer": "消息队列中包含多个核心术语，如消息（Message）、生产者（Producer）、消费者（Consumer）、队列（Queue）、主题（Topic）等。消息由生产者发送到队列或主题中，消费者订阅并处理消息。为了保证消息可靠性，还涉及 ACK 确认、死信队列、延迟消息、幂等性等机制。这些术语共同构成了 MQ 系统的基础架构。\n\n--追问--\nMQ 中的生产者和消费者指什么？\t发送消息的服务和接收处理消息的服务\n什么是死信队列？\t存放无法被正常消费的消息的队列\n如何保证消息不重复消费？\t使用消息 ID + 幂等处理逻辑\nTopic 和 Queue 的区别？\tTopic 支持多订阅（广播），Queue 是点对点消费\n什么是 ACK？\t消费确认机制，确保消息被成功处理"
+      },
+      {
+        "question": "如何保证消息不丢失",
+        "answer": "✅ 一、消息丢失的常见场景\n阶段\t可能的丢失原因\n1️⃣ 生产者发送阶段\t网络故障、发送失败未处理、未确认\n2️⃣ 消息中间件阶段\t队列未持久化、Broker 宕机、内存溢出\n3️⃣ 消费者消费阶段\t消费后未确认、处理异常、消费失败\n\n\n为了保证消息不丢失，生产者、Broker、消费者三个环节都要有可靠机制。生产者通过消息确认和重试机制保证消息送达，Broker 通过消息持久化和主从复制保证消息不丢失，消费者通过手动 ACK、重试机制和死信队列保证消息被消费。同时，为了避免重复消费带来的副作用，还需要实现幂等性。只有全链路保障，才能真正做到消息不丢和可追溯。\n\n\n-- 追问 --\n如何保证 MQ 消息不丢失？\t从生产者、Broker、消费者三方面入手：ACK、持久化、重试机制等\n什么是死信队列？\t消费失败/超时/拒绝的消息最终投递的地方\n如何实现幂等性？\t使用消息 ID + 状态记录，避免重复处理\nKafka 如何保证消息不丢？\t写入磁盘、分区副本、ACK 机制、offset 控制"
+      },
+      {
+        "question": "如何处理重复消息？",
+        "answer": "一、什么是重复消息？\n同一条业务消息被消费了多次，可能导致业务逻辑被多次执行\n\n如何处理重复消息？（核心：幂等性设计）\n幂等性（Idempotency）： 无论执行一次还是多次，结果都相同。\n\n 常用幂等处理方案\n方案\t描述\t应用场景\n✅ 唯一消息 ID + 去重表\t每条消息带唯一 ID，消费前检查数据库是否处理过\t最常见\n✅ 数据库唯一索引约束\t利用唯一键防止重复插入或更新\t插入型操作\n✅ 业务字段幂等判断\t比如订单状态是否已支付\t状态驱动型\n✅ Redis 去重\t使用 Redis 的 SETNX/EXISTS 检查是否处理\t高并发、快速判断\n✅ 幂等 Token / 幂等 Key\t前端生成唯一请求标识，后端校验\t接口幂等场景\n✅ 分布式事务 / TCC / 事务消息\t保证消息与业务操作一致性\t复杂业务场景\n\n\n在使用消息队列时，为了防止消息重复消费导致业务重复执行，我们需要进行幂等性设计。常用方式包括：为每条消息设置唯一 ID，并在消费前查询是否已处理；使用数据库唯一索引避免重复插入；使用 Redis 原子操作作为幂等控制；对于复杂场景可以借助事务消息或分布式事务方案。总之，重复消息是常态，关键在于业务幂等设计。\n\n--追问--\n消息队列中为什么会出现重复消息？\t为了保证不丢消息，MQ 采用“至少一次”投递策略\n如何避免重复消费？\t幂等性设计：唯一 ID + 去重表 / Redis / 业务状态判断\n什么是幂等性？\t多次执行结果一致，不影响业务结果\nKafka 如何处理重复消息？\t幂等生产者 + offset 管理 + 事务消息\n\n"
+      },
+      {
+        "question": "如何保证消息的有序性",
+        "answer": "保证消息有序主要是通过“写入顺序 + 消费顺序”的双重控制来实现。在 Kafka 中，可以通过按业务 ID 分区，同一分区的消息天然有序；在 RocketMQ 中可以使用顺序消息机制，将同一类业务消息路由到同一队列，并用单线程消费。在 RabbitMQ 中，通过设置 prefetch=1 和单线程消费也能保证顺序。对于高并发业务，通常采用“局部有序”策略，即在每个业务实体内保证有序，以兼顾性能和一致性。\n\n--追问--\n如何保证消息的有序性？\t同一业务 ID 发送到同一队列/分区，消费端单线程处理\nKafka 如何保证消息顺序？\t同一 key 的消息进入同一个分区，分区内天然有序\nRocketMQ 如何实现顺序消息？\t使用顺序队列选择器 + 顺序消费线程\n如果消息乱序了怎么处理？\t消费端缓存 + 排序 + 滑动窗口处理\n"
+      },
+      {
+        "question": "如何处理消息堆积",
+        "answer": "消息堆积通常是由于消费者处理能力不足或消费异常导致的。解决方案包括：扩容消费者、优化消费逻辑、批量消费、异步多线程处理、使用死信队列、设置限流和削峰填谷机制等。同时应配合监控系统，实时观察队列长度，及时预警处理。\n\n--追问--\n什么是消息堆积？\t消息生产快于消费造成消息积压\n如何处理消息堆积？\t扩容消费者、优化消费逻辑、批处理、异步处理等\nKafka 中如何排查堆积？\t查看消费组的 Lag 指标\n消息堆积会造成什么问题？\t延迟升高、系统崩溃、消息过期、业务错误\n"
+      },
+      {
+        "question": "rocketMq 中的事务消息的实现？",
+        "answer": "RocketMQ 通过 “两阶段提交” 实现事务消息。第一阶段发送半消息（消息暂不可消费），第二阶段执行本地事务后根据结果提交或回滚。若状态不确定，Broker 会通过回查机制调用生产者的回查接口判断事务是否完成，从而保障消息一致性。事务消息适用于分布式系统中需要强一致性的场景，如订单系统、支付系统等。\n\n--追问--\nRocketMQ 是如何实现事务消息的？\t半消息 + 本地事务 + 回查机制\n什么是半消息？\t未提交状态的消息，暂不可被消费\n若生产者挂了，RocketMQ 如何处理？\t启动回查机制，定时检查事务状态\n事务消息与普通消息的区别？\t普通消息发即投递，事务消息需确认后投递\n事务消息能否用于延迟 / 批量消息？\t不能，RocketMQ 限制事务消息不能设置延迟或批量"
+      }
+    ]
+  }
+}
