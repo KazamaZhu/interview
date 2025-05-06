@@ -3,7 +3,14 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { categories, interviewQuestions } from '@/data/interviewData'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { addInterviewQuestion, updateInterviewQuestion, deleteInterviewQuestion, getCurrentData } from '@/utils/DataManager'
+import { 
+  addInterviewQuestion, 
+  updateInterviewQuestion, 
+  deleteInterviewQuestion, 
+  getCurrentData,
+  moveInterviewQuestion,
+  saveCustomData
+} from '@/utils/DataManager'
 
 const route = useRoute()
 const router = useRouter()
@@ -147,7 +154,8 @@ const editMode = ref('add') // 'add' 或 'edit'
 const editIndex = ref(-1)
 const editData = ref({
   question: '',
-  answer: ''
+  answer: '',
+  position: 'bottom' // 'top'表示置顶，'bottom'表示置底，默认置底
 })
 
 // 打开添加表单
@@ -155,7 +163,8 @@ const openAddForm = () => {
   editMode.value = 'add'
   editData.value = {
     question: '',
-    answer: ''
+    answer: '',
+    position: 'bottom' // 默认置底
   }
   showEditForm.value = true
 }
@@ -167,7 +176,8 @@ const openEditForm = (index) => {
   const question = questions.value[index]
   editData.value = {
     question: question.question,
-    answer: question.answer
+    answer: question.answer,
+    position: 'bottom' // 编辑时position不重要
   }
   showEditForm.value = true
 }
@@ -188,12 +198,38 @@ const saveQuestion = () => {
   let success = false
 
   if (editMode.value === 'add') {
-    // 添加新问题
-    success = addInterviewQuestion(
-      currentCategory.value,
-      editData.value.question,
-      editData.value.answer
-    )
+    // 获取当前数据
+    const data = getCurrentData()
+    
+    // 检查分类是否存在，不存在则添加
+    if (!data.categories.includes(currentCategory.value)) {
+      data.categories.push(currentCategory.value)
+    }
+    
+    // 确保该分类的问题数组存在
+    if (!data.interviewQuestions[currentCategory.value]) {
+      data.interviewQuestions[currentCategory.value] = []
+    }
+    
+    // 创建新问题
+    const newQuestion = {
+      question: editData.value.question,
+      answer: editData.value.answer
+    }
+    
+    // 根据选择的位置添加问题
+    if (editData.value.position === 'top') {
+      // 添加到顶部
+      data.interviewQuestions[currentCategory.value].unshift(newQuestion)
+      ElMessage.success('问题已添加到顶部')
+    } else {
+      // 添加到底部
+      data.interviewQuestions[currentCategory.value].push(newQuestion)
+      ElMessage.success('问题已添加到底部')
+    }
+    
+    // 保存数据
+    success = saveCustomData(data)
   } else {
     // 更新问题
     success = updateInterviewQuestion(
@@ -212,7 +248,9 @@ const saveQuestion = () => {
     // 如果是新添加的问题，自动显示其答案
     if (editMode.value === 'add') {
       setTimeout(() => {
-        visibleAnswers.value.add(localQuestions.value.length - 1)
+        // 根据添加位置设置可见答案
+        const index = editData.value.position === 'top' ? 0 : localQuestions.value.length - 1
+        visibleAnswers.value.add(index)
       }, 100)
     }
   }
@@ -250,6 +288,59 @@ const confirmDelete = (index) => {
   }).catch(() => {
     // 用户取消删除
   })
+}
+
+// 移动问题位置（向上）
+const moveQuestionUp = (index) => {
+  if (index <= 0) return // 已经是第一个，无法上移
+  
+  const success = moveInterviewQuestion(currentCategory.value, index, index - 1)
+  if (success) {
+    // 更新可见答案的索引
+    if (visibleAnswers.value.has(index) || visibleAnswers.value.has(index - 1)) {
+      const newVisibleAnswers = new Set()
+      visibleAnswers.value.forEach(visibleIndex => {
+        if (visibleIndex === index) {
+          newVisibleAnswers.add(index - 1)
+        } else if (visibleIndex === index - 1) {
+          newVisibleAnswers.add(index)
+        } else {
+          newVisibleAnswers.add(visibleIndex)
+        }
+      })
+      visibleAnswers.value = newVisibleAnswers
+    }
+    
+    // 重新加载最新数据
+    loadLatestData()
+  }
+}
+
+// 移动问题位置（向下）
+const moveQuestionDown = (index) => {
+  // 检查是否已经是最后一个问题
+  if (index >= questions.value.length - 1) return // 已经是最后一个，无法下移
+  
+  const success = moveInterviewQuestion(currentCategory.value, index, index + 1)
+  if (success) {
+    // 更新可见答案的索引
+    if (visibleAnswers.value.has(index) || visibleAnswers.value.has(index + 1)) {
+      const newVisibleAnswers = new Set()
+      visibleAnswers.value.forEach(visibleIndex => {
+        if (visibleIndex === index) {
+          newVisibleAnswers.add(index + 1)
+        } else if (visibleIndex === index + 1) {
+          newVisibleAnswers.add(index)
+        } else {
+          newVisibleAnswers.add(visibleIndex)
+        }
+      })
+      visibleAnswers.value = newVisibleAnswers
+    }
+    
+    // 重新加载最新数据
+    loadLatestData()
+  }
 }
 </script>
 
@@ -307,6 +398,34 @@ const confirmDelete = (index) => {
               </el-icon>
             </el-button>
 
+            <!-- 上移按钮 -->
+            <el-button 
+              v-if="index > 0" 
+              @click="moveQuestionUp(index)" 
+              size="small" 
+              type="warning" 
+              text
+              title="上移问题"
+            >
+              <el-icon>
+                <Top />
+              </el-icon>
+            </el-button>
+
+            <!-- 下移按钮 -->
+            <el-button 
+              v-if="index < questions.length - 1" 
+              @click="moveQuestionDown(index)" 
+              size="small" 
+              type="warning" 
+              text
+              title="下移问题"
+            >
+              <el-icon>
+                <Bottom />
+              </el-icon>
+            </el-button>
+
             <el-button @click="toggleAnswer(index)" size="small" text>
               <el-icon v-if="visibleAnswers.has(index)">
                 <ArrowUp />
@@ -333,6 +452,14 @@ const confirmDelete = (index) => {
 
         <el-form-item label="答案">
           <el-input v-model="editData.answer" type="textarea" :rows="8" placeholder="请输入答案内容"></el-input>
+        </el-form-item>
+        
+        <!-- 添加新问题时显示位置选择 -->
+        <el-form-item v-if="editMode === 'add'" label="添加位置">
+          <el-radio-group v-model="editData.position">
+            <el-radio label="top">置顶 (添加到列表顶部)</el-radio>
+            <el-radio label="bottom">置底 (添加到列表底部)</el-radio>
+          </el-radio-group>
         </el-form-item>
       </el-form>
 
@@ -419,6 +546,16 @@ const confirmDelete = (index) => {
   display: flex;
   gap: 5px;
   white-space: nowrap;
+}
+
+/* 排序按钮样式 */
+.question-item .el-button--warning {
+  opacity: 0.3;
+  transition: opacity 0.3s;
+}
+
+.question-item:hover .el-button--warning {
+  opacity: 1;
 }
 
 .answer-container {

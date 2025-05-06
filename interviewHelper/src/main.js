@@ -11,7 +11,7 @@ import 'element-plus/dist/index.css'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 
 // 初始化数据管理器
-import { initDataManager } from './utils/DataManager'
+import { initDataManager, loadPredefinedData } from './utils/DataManager'
 
 // 应用初始化前确保数据管理器已初始化
 try {
@@ -31,6 +31,9 @@ app.config.errorHandler = (err, vm, info) => {
     console.error('应用错误:', err)
     console.error('错误信息:', info)
 }
+
+// 添加全局属性
+app.config.globalProperties.$loadPredefinedData = loadPredefinedData
 
 // Register Element Plus
 app.use(ElementPlus, {

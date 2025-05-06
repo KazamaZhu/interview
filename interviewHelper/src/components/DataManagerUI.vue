@@ -1,10 +1,12 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, getCurrentInstance } from 'vue'
 import { exportData, importData, resetData } from '@/utils/DataManager'
 import { ElMessageBox, ElMessage } from 'element-plus'
 
 // 文件输入引用
 const fileInput = ref(null)
+// 获取应用实例
+const { proxy } = getCurrentInstance()
 
 // 处理导出数据
 const handleExport = () => {
@@ -14,6 +16,46 @@ const handleExport = () => {
 // 触发文件选择对话框
 const triggerFileSelection = () => {
     fileInput.value.click()
+}
+
+// 处理加载预定义数据
+const handleLoadPredefined = () => {
+    ElMessageBox.confirm(
+        '确定要加载2025-05-05的预定义数据吗？这将替换当前所有数据。',
+        '加载预定义数据',
+        {
+            confirmButtonText: '确定加载',
+            cancelButtonText: '取消',
+            type: 'warning'
+        }
+    ).then(() => {
+        try {
+            const success = proxy.$loadPredefinedData()
+            if (success) {
+                ElMessageBox.confirm(
+                    '预定义数据加载成功，是否刷新页面以应用新数据？',
+                    '加载成功',
+                    {
+                        confirmButtonText: '刷新页面',
+                        cancelButtonText: '稍后手动刷新',
+                        type: 'success'
+                    }
+                ).then(() => {
+                    // 刷新页面
+                    window.location.reload()
+                }).catch(() => {
+                    // 用户选择不刷新
+                })
+            } else {
+                ElMessage.error('加载预定义数据失败')
+            }
+        } catch (error) {
+            console.error('加载预定义数据出错:', error)
+            ElMessage.error('加载预定义数据出错: ' + error.message)
+        }
+    }).catch(() => {
+        // 用户取消加载
+    })
 }
 
 // 处理文件选择
@@ -212,12 +254,22 @@ const handleReset = () => {
 }
 
 .warning {
+    margin-top: 10px;
+    padding: 8px;
+    background-color: #f0f0f0;
+    border-radius: 4px;
     display: flex;
     align-items: center;
-    gap: 5px;
-    margin-top: 10px;
-    color: #E6A23C;
-    font-size: 0.85rem;
+    gap: 8px;
+}
+
+.warning .el-icon {
+    font-size: 1.2rem;
+}
+
+.warning span {
+    font-size: 0.9rem;
+    color: #606266;
 }
 
 @media (max-width: 768px) {

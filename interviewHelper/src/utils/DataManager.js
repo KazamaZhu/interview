@@ -4,6 +4,7 @@
  */
 import { defaultCategories, defaultInterviewQuestions } from '@/data/interviewData'
 import { ElMessage } from 'element-plus'
+import predefinedData from '@/data/interview-data-2025-05-05.json'
 
 // 本地存储键
 const STORAGE_KEY = 'interview-helper-data'
@@ -15,7 +16,13 @@ export function initDataManager() {
     // 检查localStorage中是否已有数据
     const storedData = localStorage.getItem(STORAGE_KEY)
     if (!storedData) {
-        // 如果没有，初始化为默认数据
+        // 如果没有，先尝试加载预定义数据
+        if (loadPredefinedData()) {
+            console.log('数据管理器已初始化为预定义数据')
+            return
+        }
+
+        // 如果预定义数据加载失败，则初始化为默认数据
         saveCustomData({
             categories: defaultCategories,
             interviewQuestions: defaultInterviewQuestions
@@ -23,6 +30,38 @@ export function initDataManager() {
         console.log('数据管理器已初始化为默认数据')
     } else {
         console.log('数据管理器已加载本地存储数据')
+    }
+}
+
+/**
+ * 加载预定义的JSON文件数据
+ * @returns {boolean} 是否成功
+ */
+export function loadPredefinedData() {
+    try {
+        console.log('开始加载预定义数据文件');
+
+        // 验证预定义数据格式
+        if (!validateData(predefinedData)) {
+            console.error('预定义数据验证失败');
+            return false;
+        }
+
+        // 修复数据格式
+        const fixedData = fixDataFormat(predefinedData);
+
+        // 保存数据到localStorage
+        const success = saveCustomData(fixedData);
+        if (success) {
+            console.log('预定义数据加载成功');
+            return true;
+        } else {
+            console.error('预定义数据保存失败');
+            return false;
+        }
+    } catch (error) {
+        console.error('加载预定义数据失败:', error);
+        return false;
     }
 }
 
@@ -557,6 +596,60 @@ export function editCategory(oldCategoryName, newCategoryName) {
         return saveCustomData(data)
     } catch (error) {
         console.error('编辑分类失败:', error)
+        return false
+    }
+}
+
+/**
+ * 移动面试题的位置（向上或向下）
+ * @param {string} category 分类名称
+ * @param {number} currentIndex 当前问题的索引
+ * @param {number} targetIndex 目标位置的索引
+ * @returns {boolean} 是否成功
+ */
+export function moveInterviewQuestion(category, currentIndex, targetIndex) {
+    try {
+        // 获取当前数据
+        const data = getCurrentData()
+
+        // 检查分类是否存在
+        if (!data.interviewQuestions[category]) {
+            console.error(`分类 "${category}" 不存在`)
+            ElMessage.error(`分类 "${category}" 不存在`)
+            return false
+        }
+
+        // 获取问题数组
+        const questions = data.interviewQuestions[category]
+
+        // 检查索引是否有效
+        if (currentIndex < 0 || currentIndex >= questions.length ||
+            targetIndex < 0 || targetIndex >= questions.length) {
+            console.error('索引无效')
+            ElMessage.error('移动失败：索引无效')
+            return false
+        }
+
+        // 如果目标位置与当前位置相同，则无需移动
+        if (currentIndex === targetIndex) {
+            return true
+        }
+
+        // 从数组中移除要移动的问题
+        const [movedQuestion] = questions.splice(currentIndex, 1)
+
+        // 将问题插入到目标位置
+        questions.splice(targetIndex, 0, movedQuestion)
+
+        // 保存数据
+        const success = saveCustomData(data)
+        if (success) {
+            ElMessage.success('问题移动成功')
+        }
+        return success
+    } catch (error) {
+        console.error('移动问题失败:', error)
+        ElMessage.error('移动问题失败: ' + error.message)
         return false
     }
 } 
